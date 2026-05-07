@@ -1,0 +1,1 @@
+ALTER TYPE "public"."facility_type" ADD VALUE IF NOT EXISTS 'security';

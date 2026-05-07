@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
-import { requireAuth, getAuth } from "@clerk/express";
-import { syncUser, requireRole } from "../middleware/auth.js";
+import { requireAuth } from "@clerk/express";
+import { syncUser } from "../middleware/auth.js";
 import { db } from "../db/index.js";
 import { users } from "../db/schema/index.js";
 import { eq } from "drizzle-orm";

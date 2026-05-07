@@ -266,7 +266,7 @@ router.patch("/:id/respond", syncUser, requireAuth, async (req, res) => {
     const [row] = await db
       .select()
       .from(bookingRequests)
-      .where(eq(bookingRequests.id, id))
+      .where(eq(bookingRequests.id, req.params.id as string))
       .limit(1);
 
     if (!row) {
@@ -303,7 +303,7 @@ router.patch("/:id/respond", syncUser, requireAuth, async (req, res) => {
         respondedAt: now,
         updatedAt: now,
       })
-      .where(eq(bookingRequests.id, id))
+      .where(eq(bookingRequests.id, req.params.id as string))
       .returning();
 
     const [enriched] = await enrichBookings([updated]);
@@ -323,7 +323,7 @@ router.delete("/:id", syncUser, requireAuth, async (req, res) => {
     const [row] = await db
       .select()
       .from(bookingRequests)
-      .where(eq(bookingRequests.id, id))
+      .where(eq(bookingRequests.id, req.params.id as string))
       .limit(1);
 
     if (!row) {
@@ -345,7 +345,7 @@ router.delete("/:id", syncUser, requireAuth, async (req, res) => {
       });
     }
 
-    await db.delete(bookingRequests).where(eq(bookingRequests.id, id));
+    await db.delete(bookingRequests).where(eq(bookingRequests.id, req.params.id as string));
     res.json({ success: true });
   } catch (err) {
     console.error("Delete booking error:", err);

@@ -1,14 +1,8 @@
 import express from "express";
 import { z } from "zod";
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
-
 import { db } from "../db/index.js";
-import {
-  inquiries,
-  inquiryMessages,
-  properties,
-  users,
-} from "../db/schema/index.js";
+import { inquiries, inquiryMessages, properties, users } from "../db/schema/index.js";
 import { syncUser } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -80,19 +74,20 @@ async function enrichThreads(
       SELECT DISTINCT ON (property_id) property_id, url
       FROM property_photos
       WHERE property_id IN (${sql.join(
-        propIds.map((id) => sql`${id}`),
-        sql`, `
-      )})
+      propIds.map((id) => sql`${id}`),
+      sql`, `
+    )})
       ORDER BY property_id, display_order ASC
     `),
   ]);
 
   const propMap = new Map(props.map((p) => [p.id, p]));
   const userMap = new Map(partyUsers.map((u) => [u.id, u]));
-  const coverMap = new Map(
-    (coverPhotos as any).rows?.map((r: any) => [r.property_id, r.url]) ||
-      (coverPhotos as any[]).map((r: any) => [r.property_id, r.url])
-  );
+  type CoverRow = { property_id: string; url: string };
+  const coverRows: CoverRow[] =
+    (coverPhotos as unknown as { rows: CoverRow[] }).rows ??
+    (coverPhotos as unknown as CoverRow[]);
+  const coverMap = new Map(coverRows.map((r) => [r.property_id, r.url]));
 
   return rows.map((r) => {
     const p = propMap.get(r.propertyId);
@@ -263,7 +258,7 @@ router.get("/:id", syncUser, requireAuth, async (req, res) => {
     const [row] = await db
       .select()
       .from(inquiries)
-      .where(eq(inquiries.id, id))
+      .where(eq(inquiries.id, req.params.id as string))
       .limit(1);
 
     if (!row) {
@@ -279,7 +274,7 @@ router.get("/:id", syncUser, requireAuth, async (req, res) => {
     const messages = await db
       .select()
       .from(inquiryMessages)
-      .where(eq(inquiryMessages.inquiryId, id))
+      .where(eq(inquiryMessages.inquiryId, req.params.id as string))
       .orderBy(inquiryMessages.createdAt);
 
     res.json({
@@ -311,7 +306,7 @@ router.post("/:id/messages", syncUser, requireAuth, async (req, res) => {
     const [row] = await db
       .select()
       .from(inquiries)
-      .where(eq(inquiries.id, id))
+      .where(eq(inquiries.id, req.params.id as string))
       .limit(1);
 
     if (!row) {
@@ -326,7 +321,7 @@ router.post("/:id/messages", syncUser, requireAuth, async (req, res) => {
     const [message] = await db
       .insert(inquiryMessages)
       .values({
-        inquiryId: id,
+        inquiryId: req.params.id as string,
         senderId: dbUser.id,
         body,
       })
@@ -346,7 +341,7 @@ router.post("/:id/messages", syncUser, requireAuth, async (req, res) => {
           ? sql`${inquiries.hostUnread} + 1`
           : row.hostUnread,
       })
-      .where(eq(inquiries.id, id));
+      .where(eq(inquiries.id, req.params.id as string));
 
     res.status(201).json({ success: true, message });
   } catch (err) {
@@ -364,7 +359,7 @@ router.patch("/:id/read", syncUser, requireAuth, async (req, res) => {
     const [row] = await db
       .select()
       .from(inquiries)
-      .where(eq(inquiries.id, id))
+      .where(eq(inquiries.id, req.params.id as string))
       .limit(1);
 
     if (!row) {
@@ -381,7 +376,7 @@ router.patch("/:id/read", syncUser, requireAuth, async (req, res) => {
         guestUnread: isGuest ? 0 : row.guestUnread,
         hostUnread: isGuest ? row.hostUnread : 0,
       })
-      .where(eq(inquiries.id, id));
+      .where(eq(inquiries.id, req.params.id as string));
 
     res.json({ success: true });
   } catch (err) {

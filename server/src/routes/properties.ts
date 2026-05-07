@@ -80,6 +80,12 @@ async function loadPropertyWithRelations(id: string) {
   };
 }
 
+function getRouteParamId(id: string | string[] | undefined) {
+  if (typeof id === "string") return id;
+  if (Array.isArray(id) && id.length > 0) return id[0];
+  return null;
+}
+
 // ─── Routes ──────────────────────────────────────────────
 
 // GET /properties — public list
@@ -144,7 +150,12 @@ router.get("/me", syncUser, requireRole("host"), async (req, res) => {
 // GET /properties/:id — public detail
 router.get("/:id", async (req, res) => {
   try {
-    const property = await loadPropertyWithRelations(req.params.id);
+    const id = getRouteParamId(req.params.id);
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Invalid property id" });
+    }
+
+    const property = await loadPropertyWithRelations(id);
     if (!property) {
       return res.status(404).json({ success: false, message: "Property not found" });
     }
@@ -228,7 +239,10 @@ router.put("/:id", syncUser, requireRole("host"), async (req, res) => {
     }
 
     const dbUser = (req as any).dbUser;
-    const { id } = req.params;
+    const id = getRouteParamId(req.params.id);
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Invalid property id" });
+    }
 
     const [existing] = await db
       .select()
@@ -316,7 +330,10 @@ router.put("/:id", syncUser, requireRole("host"), async (req, res) => {
 router.delete("/:id", syncUser, requireRole("host"), async (req, res) => {
   try {
     const dbUser = (req as any).dbUser;
-    const { id } = req.params;
+    const id = getRouteParamId(req.params.id);
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Invalid property id" });
+    }
 
     const [existing] = await db
       .select()

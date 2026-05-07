@@ -39,6 +39,7 @@ export const facilityTypeEnum = pgEnum("facility_type", [
   "food",
   "laundry",
   "parking",
+  "security",
   "gym",
   "power_backup",
   "water_supply",
