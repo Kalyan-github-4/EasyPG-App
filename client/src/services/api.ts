@@ -127,6 +127,7 @@ export type FacilityType =
   | "food"
   | "laundry"
   | "parking"
+  | "security"
   | "gym"
   | "power_backup"
   | "water_supply"

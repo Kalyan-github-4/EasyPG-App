@@ -1,10 +1,10 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { House, Plus, Camera, Sparkle } from "phosphor-react-native";
+import { House, ArrowRight, Camera, Sparkle } from "phosphor-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 type Props = {
-  onAdd: () => void;
+  onOpenListings: () => void;
 };
 
 const BENEFITS = [
@@ -12,7 +12,7 @@ const BENEFITS = [
   { Icon: Sparkle, text: "Start receiving inquiries today" },
 ];
 
-export default function EmptyHostHome({ onAdd }: Props) {
+export default function EmptyHostHome({ onOpenListings }: Props) {
   return (
     <View style={{ paddingHorizontal: 24, marginTop: 8 }}>
       {/* Hero card */}
@@ -106,7 +106,7 @@ export default function EmptyHostHome({ onAdd }: Props) {
           ))}
 
           <TouchableOpacity
-            onPress={onAdd}
+            onPress={onOpenListings}
             activeOpacity={0.9}
             style={{
               marginTop: 10,
@@ -119,10 +119,10 @@ export default function EmptyHostHome({ onAdd }: Props) {
               gap: 8,
             }}
           >
-            <Plus size={18} color="#fff" weight="bold" />
             <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
-              Add your first property
+              Open listings
             </Text>
+            <ArrowRight size={18} color="#fff" weight="bold" />
           </TouchableOpacity>
         </View>
       </View>

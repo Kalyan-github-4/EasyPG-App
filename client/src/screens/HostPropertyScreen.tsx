@@ -28,6 +28,7 @@ import AmenityPill from "@/src/components/host-property/AmenityPill";
 import PhotoGrid from "@/src/components/host-property/PhotoGrid";
 import StatCard from "@/src/components/host-property/StatCard";
 import HostPropertySkeleton from "@/src/components/host-property/HostPropertySkeleton";
+import PropertyLocationMap from "@/src/components/property/PropertyLocationMap";
 
 export default function HostPropertyScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -136,6 +137,11 @@ export default function HostPropertyScreen() {
     router.push(`/(app)/host/property/${property.id}/members` as any);
   };
 
+  const goToEditLocation = () => {
+    if (!property) return;
+    router.push(`/(app)/host/property/${property.id}/edit` as any);
+  };
+
   // ─── Loading ──────────────────────────────────────
   if (loading && !refreshing) {
     return <HostPropertySkeleton />;
@@ -231,6 +237,68 @@ export default function HostPropertyScreen() {
             </Text>
           </View>
         </View>
+
+        {typeof property.latitude === "number" && typeof property.longitude === "number" ? (
+          <DetailSection title="Location & map">
+            <View
+              style={{
+                backgroundColor: "#fff",
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                overflow: "hidden",
+              }}
+            >
+              <View style={{ paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10 }}>
+                <Text style={{ fontSize: 13, fontWeight: "800", color: "#0F172A" }}>
+                  Mini map preview
+                </Text>
+                <Text style={{ fontSize: 12, color: "#64748B", marginTop: 3, lineHeight: 17 }}>
+                  Tap edit to adjust the pin or address.
+                </Text>
+              </View>
+              <PropertyLocationMap
+                latitude={property.latitude}
+                longitude={property.longitude}
+                location={property.location}
+                onDirections={goToEditLocation}
+                actionLabel="Edit location"
+              />
+            </View>
+          </DetailSection>
+        ) : (
+          <DetailSection title="Location & map">
+            <View
+              style={{
+                backgroundColor: "#fff",
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                padding: 14,
+                gap: 10,
+              }}
+            >
+              <Text style={{ fontSize: 13, color: "#334155", lineHeight: 20 }}>
+                This property doesn't have a saved map pin yet. Add one from edit.
+              </Text>
+              <TouchableOpacity
+                onPress={goToEditLocation}
+                activeOpacity={0.85}
+                style={{
+                  alignSelf: "flex-start",
+                  backgroundColor: "#2563EB",
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+                  Add location
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </DetailSection>
+        )}
 
         {/* Quick stats */}
         <View

@@ -11,9 +11,9 @@ type Props = {
 export default function StepAmenities({ state, dispatch }: Props) {
   return (
     <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-      <Text style={styles.h1}>What's included?</Text>
+      <Text style={styles.h1}>What&apos;s included?</Text>
       <Text style={styles.sub}>
-        Select all amenities available at your PG. You can add more later.
+        Select all amenities available at your PG. Guests use these to filter and compare listings.
       </Text>
 
       <View style={styles.grid}>

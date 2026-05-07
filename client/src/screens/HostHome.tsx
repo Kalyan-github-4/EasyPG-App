@@ -10,7 +10,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
 import {
-  Plus,
   ArrowRight,
   CalendarBlank,
   Camera,
@@ -70,9 +69,10 @@ export default function HostHome({ firstName }: Props) {
     load();
   }, [load]);
 
-  const goToAdd = () => router.push("/(app)/host/add-property" as any);
+  const goToListings = () => router.push("/(app)/host/listings" as any);
   const goToProperty = (id: string) =>
     router.push(`/(app)/host/property/${id}` as any);
+  const goToProfile = () => router.push("/(app)/profile" as any);
 
   // ─── Loading ───────────────────────────────────
   if (loading && !refreshing) {
@@ -89,6 +89,7 @@ export default function HostHome({ firstName }: Props) {
             firstName={firstName}
             avatarUrl={dbUser?.avatarUrl}
             subtitle="Loading your listings…"
+            onProfilePress={goToProfile}
           />
 
           {/* Hero card skeleton */}
@@ -160,6 +161,7 @@ export default function HostHome({ firstName }: Props) {
           firstName={firstName}
           avatarUrl={dbUser?.avatarUrl}
           subtitle={subtitleText}
+          onProfilePress={goToProfile}
         />
 
         {/* Error banner */}
@@ -192,7 +194,7 @@ export default function HostHome({ firstName }: Props) {
         ) : null}
 
         {/* ── Empty state ── */}
-        {!hasListings && <EmptyHostHome onAdd={goToAdd} />}
+        {!hasListings && <EmptyHostHome onOpenListings={goToListings} />}
 
         {/* ── Populated state ── */}
         {hasListings && (
@@ -392,51 +394,6 @@ export default function HostHome({ firstName }: Props) {
               </ScrollView>
             </View>
 
-            {/* Add another property — subtle card at end */}
-            <TouchableOpacity
-              onPress={goToAdd}
-              activeOpacity={0.9}
-              style={{
-                marginHorizontal: 24,
-                marginTop: 32,
-                backgroundColor: "#fff",
-                borderRadius: 18,
-                borderWidth: 1.5,
-                borderStyle: "dashed",
-                borderColor: "#CBD5E1",
-                paddingVertical: 20,
-                paddingHorizontal: 18,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 14,
-              }}
-            >
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 14,
-                  backgroundColor: "#EFF6FF",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Plus size={22} color="#2563EB" weight="bold" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{ fontSize: 15, fontWeight: "800", color: "#0F172A" }}
-                >
-                  List another property
-                </Text>
-                <Text
-                  style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}
-                >
-                  Takes about 2 minutes
-                </Text>
-              </View>
-              <ArrowRight size={18} color="#94A3B8" weight="bold" />
-            </TouchableOpacity>
           </>
         )}
       </ScrollView>

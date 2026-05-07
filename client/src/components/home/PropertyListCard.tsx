@@ -233,6 +233,7 @@ function formatFacility(f: string): string {
     food: "Food",
     laundry: "Laundry",
     parking: "Parking",
+    security: "Security",
     gym: "Gym",
     power_backup: "Power",
     water_supply: "Water",

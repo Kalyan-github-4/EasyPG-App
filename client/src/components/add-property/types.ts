@@ -5,6 +5,7 @@ import {
   ForkKnife,
   TShirt,
   Car,
+  ShieldCheck,
   VideoCamera,
   Barbell,
   Lightning,
@@ -25,6 +26,7 @@ export const FACILITY_META: {
   { type: "food", label: "Food / Mess", Icon: ForkKnife },
   { type: "laundry", label: "Laundry", Icon: TShirt },
   { type: "parking", label: "Parking", Icon: Car },
+  { type: "security", label: "Security", Icon: ShieldCheck },
   { type: "cctv", label: "CCTV", Icon: VideoCamera },
   { type: "gym", label: "Gym", Icon: Barbell },
   { type: "power_backup", label: "Power Backup", Icon: Lightning },
@@ -45,8 +47,16 @@ export type PhotoState = {
 
 // ─── Form State ──────────────────────────────────────────
 
-export const STEPS = ["Basics", "Rooms", "Amenities", "Photos", "About", "Review"] as const;
-export type StepIndex = 0 | 1 | 2 | 3 | 4 | 5;
+export const STEPS = [
+  "Basics",
+  "Location",
+  "Pricing",
+  "Amenities",
+  "Photos",
+  "About",
+  "Review",
+] as const;
+export type StepIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export type FormState = {
   step: StepIndex;
@@ -54,6 +64,8 @@ export type FormState = {
   name: string;
   city: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
   rent: string;
   facilities: FacilityType[];
   photos: PhotoState[];
@@ -66,6 +78,8 @@ export const INITIAL_STATE: FormState = {
   name: "",
   city: "",
   location: "",
+  latitude: null,
+  longitude: null,
   rent: "",
   facilities: [],
   photos: [],
@@ -76,6 +90,8 @@ export const INITIAL_STATE: FormState = {
 
 export type Action =
   | { type: "SET_FIELD"; field: "name" | "city" | "location" | "rent" | "description"; value: string }
+  | { type: "SET_CITY"; value: string }
+  | { type: "SET_COORDINATES"; latitude: number | null; longitude: number | null }
   | { type: "SET_PROPERTY_TYPE"; value: PropertyType }
   | { type: "TOGGLE_FACILITY"; value: FacilityType }
   | { type: "ADD_PHOTO"; photo: PhotoState }
@@ -92,6 +108,21 @@ export function reducer(state: FormState, action: Action): FormState {
   switch (action.type) {
     case "SET_FIELD":
       return { ...state, [action.field]: action.value };
+
+    case "SET_CITY":
+      return {
+        ...state,
+        city: action.value,
+        latitude: null,
+        longitude: null,
+      };
+
+    case "SET_COORDINATES":
+      return {
+        ...state,
+        latitude: action.latitude,
+        longitude: action.longitude,
+      };
 
     case "SET_PROPERTY_TYPE":
       return { ...state, propertyType: action.value };
@@ -136,7 +167,7 @@ export function reducer(state: FormState, action: Action): FormState {
       return { ...state, step: action.step };
 
     case "NEXT":
-      return state.step < 5 ? { ...state, step: (state.step + 1) as StepIndex } : state;
+      return state.step < 6 ? { ...state, step: (state.step + 1) as StepIndex } : state;
 
     case "BACK":
       return state.step > 0 ? { ...state, step: (state.step - 1) as StepIndex } : state;
@@ -160,6 +191,7 @@ export const facilityEnum = z.enum([
   "food",
   "laundry",
   "parking",
+  "security",
   "gym",
   "power_backup",
   "water_supply",
@@ -171,6 +203,11 @@ const basicsSchema = z.object({
   name: z.string().trim().min(3, "Name must be at least 3 characters").max(120),
   city: z.string().trim().min(2, "Please pick a city").max(80),
   location: z.string().trim().min(5, "Please enter a full address").max(500),
+});
+
+const mapSchema = z.object({
+  latitude: z.number(),
+  longitude: z.number(),
 });
 
 const roomsSchema = z.object({
@@ -200,12 +237,18 @@ export function validateStep(step: StepIndex, state: FormState): string | null {
         });
         return null;
       case 1:
-        roomsSchema.parse({ rent: state.rent });
+        mapSchema.parse({
+          latitude: state.latitude,
+          longitude: state.longitude,
+        });
         return null;
       case 2:
+        roomsSchema.parse({ rent: state.rent });
+        return null;
+      case 3:
         amenitiesSchema.parse({ facilities: state.facilities });
         return null;
-      case 3: {
+      case 4: {
         const uploaded = state.photos.filter((p) => p.status === "uploaded").length;
         const uploading = state.photos.filter((p) => p.status === "uploading").length;
         const failed = state.photos.filter((p) => p.status === "failed").length;
@@ -215,10 +258,10 @@ export function validateStep(step: StepIndex, state: FormState): string | null {
         if (uploaded > 10) return "Maximum 10 photos";
         return null;
       }
-      case 4:
+      case 5:
         aboutSchema.parse({ description: state.description });
         return null;
-      case 5:
+      case 6:
         return null;
     }
   } catch (err) {
@@ -237,6 +280,8 @@ export function buildPayload(state: FormState): PropertyInput {
     name: state.name.trim(),
     city: state.city.trim(),
     location: state.location.trim(),
+    latitude: state.latitude ?? undefined,
+    longitude: state.longitude ?? undefined,
     rent: Number(state.rent),
     description: state.description.trim() || undefined,
     facilities: state.facilities,

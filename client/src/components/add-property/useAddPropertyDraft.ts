@@ -18,6 +18,8 @@ export function useDraftPersistence(state: FormState, enabled: boolean) {
       const snapshot = {
         name: state.name,
         location: state.location,
+        latitude: state.latitude,
+        longitude: state.longitude,
         rent: state.rent,
         facilities: state.facilities,
         description: state.description,
@@ -65,6 +67,8 @@ export function hasAnyContent(draft: Partial<FormState> | null): boolean {
   return !!(
     draft.name?.trim() ||
     draft.location?.trim() ||
+    draft.latitude !== undefined && draft.latitude !== null ||
+    draft.longitude !== undefined && draft.longitude !== null ||
     draft.rent?.trim() ||
     draft.description?.trim() ||
     (draft.facilities && draft.facilities.length > 0) ||

@@ -1,6 +1,6 @@
 import React from "react";
-import { View, Text, TouchableOpacity, } from "react-native";
-import { LinearGradient } from "expo-linear-gradient"
+import { View, Text, TouchableOpacity } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Plus } from "phosphor-react-native";
 
 type Props = {
@@ -52,7 +52,7 @@ export default function HostListingsHeader({ count, onAdd }: Props) {
         >
           <Plus size={14} color="#fff" weight="bold" />
           <Text style={{ fontSize: 13, fontWeight: "800", color: "#fff" }}>
-            New
+            Add property
           </Text>
         </LinearGradient>
       </TouchableOpacity>

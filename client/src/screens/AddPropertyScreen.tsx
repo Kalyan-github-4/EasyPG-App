@@ -6,6 +6,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import FormShell from "@/src/components/add-property/FormShell";
 import Skeleton from "@/src/components/ui/Skeleton";
 import StepBasics from "@/src/components/add-property/StepBasics";
+import LocationPicker from "@/src/components/add-property/LocationPicker";
 import StepRooms from "@/src/components/add-property/StepRooms";
 import StepAmenities from "@/src/components/add-property/StepAmenities";
 import StepPhotos from "@/src/components/add-property/StepPhotos";
@@ -29,6 +30,7 @@ import * as api from "@/src/services/api";
 
 const STEP_TITLES = [
   { title: "Basics", subtitle: "Name and location" },
+  { title: "Location", subtitle: "Drop the pin" },
   { title: "Pricing", subtitle: "Monthly rent" },
   { title: "Amenities", subtitle: "What's included" },
   { title: "Photos", subtitle: "Show your property" },
@@ -56,6 +58,8 @@ function propertyToState(p: api.Property): Partial<FormState> {
     name: p.name,
     city: p.city,
     location: p.location,
+    latitude: p.latitude ?? null,
+    longitude: p.longitude ?? null,
     rent: String(p.rent),
     facilities: p.facilities,
     description: p.description || "",
@@ -131,7 +135,18 @@ export default function AddPropertyScreen({ editId }: Props) {
   // ─── Clear error when state changes ──────────────
   useEffect(() => {
     setErrorText(null);
-  }, [state.step, state.name, state.city, state.location, state.rent, state.facilities, state.photos, state.description]);
+  }, [
+    state.step,
+    state.name,
+    state.city,
+    state.location,
+    state.latitude,
+    state.longitude,
+    state.rent,
+    state.facilities,
+    state.photos,
+    state.description,
+  ]);
 
   // ─── Navigation handlers ─────────────────────────
   const handleBack = () => {
@@ -258,11 +273,29 @@ export default function AddPropertyScreen({ editId }: Props) {
       errorText={errorText}
     >
       {state.step === 0 && <StepBasics state={state} dispatch={dispatch} />}
-      {state.step === 1 && <StepRooms state={state} dispatch={dispatch} />}
-      {state.step === 2 && <StepAmenities state={state} dispatch={dispatch} />}
-      {state.step === 3 && <StepPhotos state={state} dispatch={dispatch} />}
-      {state.step === 4 && <StepAbout state={state} dispatch={dispatch} />}
-      {state.step === 5 && <StepReview state={state} dispatch={dispatch} />}
+      {state.step === 1 && (
+        <LocationPicker
+          city={state.city}
+          location={state.location}
+          value={
+            state.latitude !== null && state.longitude !== null
+              ? { latitude: state.latitude, longitude: state.longitude }
+              : null
+          }
+          onChange={(coords: { latitude: number; longitude: number }) =>
+            dispatch({
+              type: "SET_COORDINATES",
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            })
+          }
+        />
+      )}
+      {state.step === 2 && <StepRooms state={state} dispatch={dispatch} />}
+      {state.step === 3 && <StepAmenities state={state} dispatch={dispatch} />}
+      {state.step === 4 && <StepPhotos state={state} dispatch={dispatch} />}
+      {state.step === 5 && <StepAbout state={state} dispatch={dispatch} />}
+      {state.step === 6 && <StepReview state={state} dispatch={dispatch} />}
     </FormShell>
   );
 }

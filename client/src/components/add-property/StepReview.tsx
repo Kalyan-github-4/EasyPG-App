@@ -1,7 +1,7 @@
 import React from "react";
 import { ScrollView, View, Text, Image, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { FormState, Action, StepIndex } from "./types";
+import type { FormState, Action } from "./types";
 import { FACILITY_META } from "./types";
 
 type Props = {
@@ -42,13 +42,32 @@ export default function StepReview({ state, dispatch }: Props) {
         <Row label="Name" value={state.name || "—"} />
         <Row label="City" value={state.city || "—"} />
         <Row label="Address" value={state.location || "—"} />
+        <Row
+          label="Coordinates"
+          value={
+            state.latitude !== null && state.longitude !== null
+              ? `${state.latitude.toFixed(5)}, ${state.longitude.toFixed(5)}`
+              : "—"
+          }
+        />
       </Section>
 
-      <Section label="Pricing" onEdit={() => dispatch({ type: "GOTO", step: 1 })}>
+      <Section label="Location" onEdit={() => dispatch({ type: "GOTO", step: 1 })}>
+        <Row
+          label="Pin"
+          value={
+            state.latitude !== null && state.longitude !== null
+              ? "Selected"
+              : "Not set"
+          }
+        />
+      </Section>
+
+      <Section label="Pricing" onEdit={() => dispatch({ type: "GOTO", step: 2 })}>
         <Row label="Rent" value={rent ? `₹${rent} / month` : "—"} />
       </Section>
 
-      <Section label="Amenities" onEdit={() => dispatch({ type: "GOTO", step: 2 })}>
+      <Section label="Amenities" onEdit={() => dispatch({ type: "GOTO", step: 3 })}>
         {state.facilities.length === 0 ? (
           <Text style={styles.empty}>None selected</Text>
         ) : (
@@ -66,7 +85,7 @@ export default function StepReview({ state, dispatch }: Props) {
         )}
       </Section>
 
-      <Section label="Photos" onEdit={() => dispatch({ type: "GOTO", step: 3 })}>
+      <Section label="Photos" onEdit={() => dispatch({ type: "GOTO", step: 4 })}>
         {state.photos.length === 0 ? (
           <Text style={styles.empty}>No photos added</Text>
         ) : (
@@ -87,7 +106,7 @@ export default function StepReview({ state, dispatch }: Props) {
         )}
       </Section>
 
-      <Section label="Description" onEdit={() => dispatch({ type: "GOTO", step: 4 })}>
+      <Section label="Description" onEdit={() => dispatch({ type: "GOTO", step: 5 })}>
         {state.description.trim() ? (
           <Text style={styles.descText}>{state.description}</Text>
         ) : (

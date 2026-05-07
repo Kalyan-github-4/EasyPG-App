@@ -2,7 +2,6 @@ import React from "react";
 import { ScrollView, View, Text, TextInput, TouchableOpacity } from "react-native";
 import { House, CookingPot, Buildings } from "phosphor-react-native";
 import type { PropertyType } from "@/src/services/api";
-import { CITIES } from "@/src/data/constants";
 import type { FormState, Action } from "./types";
 
 type Props = {
@@ -99,43 +98,18 @@ export default function StepBasics({ state, dispatch }: Props) {
       <View style={{ height: 18 }} />
 
       <Label>City</Label>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8, paddingVertical: 2 }}
-      >
-        {CITIES.map((c) => {
-          const active = state.city === c.name;
-          return (
-            <TouchableOpacity
-              key={c.id}
-              activeOpacity={0.85}
-              onPress={() =>
-                dispatch({ type: "SET_FIELD", field: "city", value: c.name })
-              }
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 9,
-                borderRadius: 999,
-                borderWidth: 1.5,
-                borderColor: active ? "#2563EB" : "#E2E8F0",
-                backgroundColor: active ? "#EFF6FF" : "#fff",
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "700",
-                  color: active ? "#2563EB" : "#0F172A",
-                }}
-              >
-                {c.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-      <Hint>Guests filter by city, so this drives discoverability.</Hint>
+      <TextInput
+        value={state.city}
+        onChangeText={(v) =>
+          dispatch({ type: "SET_FIELD", field: "city", value: v })
+        }
+        placeholder="Enter your city"
+        placeholderTextColor="#94A3B8"
+        style={styles.input}
+        maxLength={80}
+        autoCapitalize="words"
+      />
+      <Hint>Type the city name exactly how you want guests to see it.</Hint>
 
       <View style={{ height: 18 }} />
 

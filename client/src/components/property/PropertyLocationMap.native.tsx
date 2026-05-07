@@ -8,6 +8,7 @@ type Props = {
   longitude: number;
   location: string;
   onDirections: () => void;
+  actionLabel?: string;
 };
 
 export default function PropertyLocationMap({
@@ -15,6 +16,7 @@ export default function PropertyLocationMap({
   longitude,
   location,
   onDirections,
+  actionLabel = "Open route",
 }: Props) {
   const htmlContent = `
     <!DOCTYPE html>
@@ -124,7 +126,7 @@ export default function PropertyLocationMap({
           >
             <Ionicons name="navigate" size={13} color="#fff" />
             <Text style={{ fontSize: 12, fontWeight: "700", color: "#fff" }}>
-              Open route
+              {actionLabel}
             </Text>
           </TouchableOpacity>
         </View>

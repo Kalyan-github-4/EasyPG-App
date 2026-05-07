@@ -96,7 +96,7 @@ export default function TabLayout() {
         name="add-property"
         options={{
           title: "Add Property",
-          href: isHost ? undefined : null,
+          href: null,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon
               icon={<PlusCircle size={24} color={color} weight={focused ? "fill" : "regular"} />}
