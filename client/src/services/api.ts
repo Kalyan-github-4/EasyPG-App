@@ -59,6 +59,62 @@ async function request<T = unknown>(endpoint: string, options: RequestOptions = 
     throw new ApiError("Network error — is the server running?", 0, error);
   }
 }
+export async function registerDevice(
+  token: string,
+  data: { fcmToken: string; platform: "ios" | "android" }
+): Promise<void> {
+  await request("/devices", { method: "POST", token, body: data });
+}
+
+export async function unregisterDevice(
+  token: string,
+  fcmToken: string
+): Promise<void> {
+  await request("/devices", { method: "DELETE", token, body: { fcmToken } });
+}
+
+// ─── Notification Endpoints ──────────────────────────────
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  type: string;
+  referenceId: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+interface NotificationsResponse {
+  success: boolean;
+  notifications: Notification[];
+}
+
+/** Fetch user's notifications */
+export async function listNotifications(token: string): Promise<Notification[]> {
+  const res = await request<NotificationsResponse>("/notifications", { token });
+  return res.notifications;
+}
+
+/** Mark a single notification as read */
+export async function markNotificationRead(
+  token: string,
+  id: string
+): Promise<void> {
+  await request<{ success: boolean }>(`/notifications/${id}/read`, {
+    method: "PATCH",
+    token,
+  });
+}
+
+/** Mark all notifications as read */
+export async function markAllNotificationsRead(token: string): Promise<void> {
+  await request<{ success: boolean }>("/notifications/read-all", {
+    method: "PATCH",
+    token,
+  });
+}
 
 // ─── User Endpoints ──────────────────────────────────────
 

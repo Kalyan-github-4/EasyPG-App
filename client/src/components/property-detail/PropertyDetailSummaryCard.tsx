@@ -9,120 +9,47 @@ type Props = {
 
 export default function PropertyDetailSummaryCard({ property }: Props) {
   return (
-    <View
-      style={{
-        marginHorizontal: 16,
-        marginTop: -24,
-        backgroundColor: "#fff",
-        borderRadius: 24,
-        padding: 20,
-        shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-        elevation: 6,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 10,
-        }}
-      >
+    <View className="p-5 mx-4 -mt-6 bg-white shadow-lg rounded-3xl shadow-blue-900/5 elevation-6">
+      <View className="flex-row justify-between items-center mb-2.5">
         <View
-          style={{
-            paddingHorizontal: 10,
-            paddingVertical: 5,
-            borderRadius: 999,
-            backgroundColor: property.isAvailable ? "#ECFDF5" : "#FEF2F2",
-          }}
+          className={`px-2.5 py-1.25 rounded-full ${
+            property.isAvailable ? "bg-emerald-50" : "bg-red-50"
+          }`}
         >
           <Text
-            style={{
-              fontSize: 11,
-              fontWeight: "800",
-              color: property.isAvailable ? "#10B981" : "#EF4444",
-              letterSpacing: 0.3,
-            }}
+            className={`text-[11px] font-extrabold tracking-wide ${
+              property.isAvailable ? "text-emerald-500" : "text-red-500"
+            }`}
           >
             {property.isAvailable ? "AVAILABLE" : "FULL"}
           </Text>
         </View>
-        <Text
-          style={{
-            fontSize: 11,
-            fontWeight: "700",
-            color: "#94A3B8",
-            letterSpacing: 0.4,
-            textTransform: "uppercase",
-          }}
-        >
+        <Text className="text-[11px] font-bold text-slate-400 tracking-wide uppercase">
           {property.propertyType}
         </Text>
       </View>
 
-      <Text
-        style={{
-          fontSize: 22,
-          fontWeight: "800",
-          color: "#0F172A",
-          lineHeight: 28,
-          marginBottom: 6,
-          letterSpacing: -0.4,
-        }}
-      >
+      <Text className="text-[22px] font-extrabold text-slate-900 leading-7 mb-1.5 tracking-tight">
         {property.name}
       </Text>
 
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 4 }}>
-        <MapPinIcon size={14} color="#64748B" weight="fill" style={{ marginTop: 2 }} />
-        <Text
-          style={{
-            fontSize: 13,
-            color: "#64748B",
-            flex: 1,
-            lineHeight: 19,
-          }}
-        >
+      <View className="flex-row items-start gap-1">
+        <View className="mt-0.5">
+          <MapPinIcon size={14} color="#64748B" weight="fill"/>
+        </View>
+        <Text className="text-[13px] text-slate-600 flex-1 leading-5">
           {property.location}
         </Text>
       </View>
 
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: "#EFF6FF",
-          borderRadius: 14,
-          padding: 14,
-          marginTop: 16,
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              fontSize: 11,
-              color: "#64748B",
-              fontWeight: "600",
-              marginBottom: 2,
-            }}
-          >
+      <View className="flex-row items-center bg-blue-50 rounded-xl p-3.5 mt-4">
+        <View className="flex-1">
+          <Text className="text-[11px] text-slate-600 font-semibold mb-0.5">
             Monthly rent
           </Text>
-          <Text
-            style={{
-              fontSize: 26,
-              fontWeight: "900",
-              color: "#2563EB",
-              letterSpacing: -0.5,
-            }}
-          >
+          <Text className="text-[26px] font-black text-blue-600 tracking-tight">
             ₹{property.rent.toLocaleString("en-IN")}
-            <Text style={{ fontSize: 13, fontWeight: "500", color: "#64748B" }}>
-              /mo
-            </Text>
+            <Text className="text-[13px] font-medium text-slate-600">/mo</Text>
           </Text>
         </View>
       </View>

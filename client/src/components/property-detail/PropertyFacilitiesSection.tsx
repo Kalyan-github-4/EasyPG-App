@@ -13,7 +13,7 @@ export default function PropertyFacilitiesSection({ facilities }: Props) {
 
   return (
     <PropertyDetailSection title="What's included">
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+      <View className="flex-row flex-wrap gap-2.5">
         {facilities.map((facility) => {
           const meta = FACILITY_META.find((m) => m.type === facility as FacilityType);
           if (!meta) return null;
@@ -21,20 +21,10 @@ export default function PropertyFacilitiesSection({ facilities }: Props) {
           return (
             <View
               key={facility}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                backgroundColor: "#fff",
-                borderWidth: 1,
-                borderColor: "#E2E8F0",
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 10,
-              }}
+              className="flex-row items-center gap-1.5 bg-white border border-slate-200 px-3 py-2 rounded-lg"
             >
               <Icon size={15} color="#2563EB" weight="regular" />
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#334155" }}>
+              <Text className="text-[13px] font-semibold text-slate-700">
                 {label}
               </Text>
             </View>

@@ -13,7 +13,7 @@ type Coordinates = {
 type Props = {
   center: Coordinates;
   userLocation?: Coordinates | null;
-  properties: Array<Property & { distanceKm?: number }>;
+  properties: (Property & { distanceKm?: number })[];
   selectedId?: string | null;
   onSelect: (property: Property) => void;
   onUseMyLocation?: () => void;

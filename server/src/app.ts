@@ -11,6 +11,8 @@ import propertiesRouter from "./routes/properties.js";
 import inquiriesRouter from "./routes/inquiries.js";
 import bookingsRouter from "./routes/bookings.js";
 import savedRouter from "./routes/saved.js";
+import devicesRouter from "./routes/devices.js";
+import notificationsRouter from "./routes/notifications.js";
 
 const app = express();
 
@@ -46,9 +48,8 @@ app.use("/properties", propertiesRouter);
 app.use("/inquiries", inquiriesRouter);
 app.use("/bookings", bookingsRouter);
 app.use("/saved", savedRouter);
-
-// Phase 6: app.use("/devices", devicesRouter);
-// Phase 6: app.use("/notifications", notificationsRouter);
+app.use("/devices", devicesRouter);
+app.use("/notifications", notificationsRouter);
 
 // ─── Global Error Handler ────────────────────────────────
 

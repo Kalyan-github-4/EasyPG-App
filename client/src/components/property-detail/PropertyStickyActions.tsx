@@ -1,102 +1,105 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
-import { CalendarCheckIcon, ChatCircleIcon, PhoneIcon } from "phosphor-react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Linking,
+  Alert,
+} from "react-native";
+import {
+  CalendarCheckIcon,
+  ChatCircleIcon,
+} from "phosphor-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
   isHostOfThis: boolean;
-  hasPhone: boolean;
+  phone?: string | null;
   isAvailable: boolean;
-  onCall: () => void;
-  onMessage: () => void;
+  propertyName?: string;
   onBook: () => void;
 };
 
 export default function PropertyStickyActions({
   isHostOfThis,
-  hasPhone,
+  phone,
   isAvailable,
-  onCall,
-  onMessage,
+  propertyName,
   onBook,
 }: Props) {
+  const insets = useSafeAreaInsets();
+
   if (isHostOfThis) return null;
+
+  const handleWhatsApp = async () => {
+    try {
+      if (!phone) {
+        Alert.alert("Phone number unavailable");
+        return;
+      }
+
+      // Remove spaces, +, -, etc.
+      const cleanPhone = phone.replace(/[^\d]/g, "");
+
+      const message =
+        `Hi, I'm interested in your property` +
+        `${propertyName ? ` "${propertyName}"` : ""} on EasyPG.\n\n` +
+        `Can I schedule a visit?`;
+
+      const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+        message
+      )}`;
+
+      await Linking.openURL(whatsappUrl);
+    } catch (error) {
+      console.log(error);
+
+      Alert.alert(
+        "Unable to open WhatsApp",
+        "Please make sure WhatsApp is installed."
+      );
+    }
+  };
 
   return (
     <View
       style={{
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: "#fff",
-        borderTopWidth: 1,
-        borderTopColor: "#F1F5F9",
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: 12,
-        flexDirection: "row",
-        gap: 10,
+        paddingBottom: Math.max(insets.bottom, 12),
       }}
+      className="absolute bottom-0 left-0 right-0 px-4 pt-3 bg-white border-t border-slate-100"
     >
-      {hasPhone ? (
+      <View className="flex-row gap-2.5">
+        {/* WhatsApp CTA */}
+        {!!phone && (
+          <TouchableOpacity
+            onPress={handleWhatsApp}
+            activeOpacity={0.85}
+            className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-3.5"
+          >
+            <ChatCircleIcon size={18} color="#fff" weight="bold" />
+
+            <Text className="text-[15px] font-bold text-white">
+              WhatsApp
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Request Visit CTA */}
         <TouchableOpacity
-          onPress={onCall}
+          onPress={onBook}
           activeOpacity={0.85}
-          style={{
-            width: 52,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 14,
-            borderWidth: 1.5,
-            borderColor: "#A7F3D0",
-            backgroundColor: "#ECFDF5",
-          }}
+          disabled={!isAvailable}
+          className={`flex-[1.3] flex-row items-center justify-center gap-2 rounded-2xl py-3.5 ${
+            isAvailable ? "bg-blue-600" : "bg-slate-300"
+          }`}
         >
-          <PhoneIcon size={20} color="#059669" weight="fill" />
+          <CalendarCheckIcon size={18} color="#fff" weight="bold" />
+
+          <Text className="text-[15px] font-bold text-white">
+            {isAvailable ? "Request Visit" : "Unavailable"}
+          </Text>
         </TouchableOpacity>
-      ) : null}
-
-      <TouchableOpacity
-        onPress={onMessage}
-        activeOpacity={0.85}
-        style={{
-          flex: 1,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          paddingVertical: 14,
-          borderRadius: 14,
-          borderWidth: 2,
-          borderColor: "#2563EB",
-        }}
-      >
-        <ChatCircleIcon size={18} color="#2563EB" weight="bold" />
-        <Text style={{ fontSize: 15, fontWeight: "700", color: "#2563EB" }}>
-          Message
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={onBook}
-        activeOpacity={0.85}
-        disabled={!isAvailable}
-        style={{
-          flex: 1.3,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          paddingVertical: 14,
-          borderRadius: 14,
-          backgroundColor: isAvailable ? "#2563EB" : "#CBD5E1",
-        }}
-      >
-        <CalendarCheckIcon size={18} color="#fff" weight="bold" />
-        <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>
-          {isAvailable ? "Request Visit" : "Unavailable"}
-        </Text>
-      </TouchableOpacity>
+      </View>
     </View>
   );
 }

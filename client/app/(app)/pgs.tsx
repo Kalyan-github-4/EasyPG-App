@@ -7,185 +7,83 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  FlatList,
 } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CaretLeft, MagnifyingGlass, X, SlidersHorizontal } from "phosphor-react-native";
+
 import * as Location from "expo-location";
 import * as api from "@/src/services/api";
-import type { FacilityType, PropertyType } from "@/src/services/api";
 import PropertyListCard from "@/src/components/home/PropertyListCard";
+import { resolveLocation, ResolvedLocation } from "@/src/lib/locationResolver";
+
+/* ───────────────────────── constants ───────────────────────── */
 
 const FILTERS = ["All", "≤ ₹8k", "≤ ₹10k", "≤ ₹12k", "Premium"];
-const TYPE_CHIPS: { value: PropertyType | "all"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "pg", label: "PG" },
-  { value: "mess", label: "Mess" },
-  { value: "hostel", label: "Hostel" },
-];
 const SORTS = ["Recent", "Price ↑", "Price ↓"];
 
-type SearchIntent = {
-  type: PropertyType | null;
-  gender: api.PropertyGender | null;
-  amenities: FacilityType[];
-  maxRent: number | null;
-  nearMe: boolean;
-  locationTerm: string | null;
-};
+/** Max radius (km) when searching near a college */
+const COLLEGE_RADIUS_KM = 10;
 
-const AMENITY_PATTERNS: Array<{ facility: FacilityType; re: RegExp }> = [
-  { facility: "ac", re: /\b(ac|air\s*conditioning?)\b/i },
-  { facility: "wifi", re: /\b(wi\s*-?\s*fi|internet)\b/i },
-  { facility: "food", re: /\b(food|meal|meals|mess\s*food)\b/i },
-  { facility: "laundry", re: /\b(laundry|washing)\b/i },
-  { facility: "parking", re: /\b(parking)\b/i },
-  { facility: "gym", re: /\b(gym|fitness)\b/i },
-  { facility: "cctv", re: /\b(cctv|camera|surveillance)\b/i },
-  { facility: "power_backup", re: /\b(power\s*backup|backup\s*power|generator)\b/i },
-  { facility: "water_supply", re: /\b(water\s*supply|water)\b/i },
-  { facility: "furnished", re: /\b(furnished|furniture)\b/i },
-];
+type Geo = { latitude: number; longitude: number };
 
-function normalize(raw: string): string {
-  return raw.toLowerCase().replace(/[^a-z0-9\s₹]/g, " ").replace(/\s+/g, " ").trim();
+/* ───────────────────────── utils ───────────────────────── */
+
+function normalize(str: string) {
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .trim();
 }
 
-function parseSearchIntent(raw: string): SearchIntent {
-  const lc = normalize(raw);
-
-  let type: PropertyType | null = null;
-  if (/\bhostels?\b/.test(lc)) type = "hostel";
-  else if (/\bmess(?:es)?\b/.test(lc)) type = "mess";
-  else if (/\bpgs?\b/.test(lc)) type = "pg";
-
-  let gender: api.PropertyGender | null = null;
-  if (/\b(girls?|ladies|women)\b/.test(lc)) gender = "girls";
-  else if (/\b(boys?|men)\b/.test(lc)) gender = "boys";
-
-  const amenities = AMENITY_PATTERNS.filter((a) => a.re.test(lc)).map((a) => a.facility);
-
-  let maxRent: number | null = null;
-  const rupeeMatch = lc.match(/(?:under|below|upto|less\s+than)\s*₹?\s*(\d+)/i);
-  if (rupeeMatch) {
-    const cap = parseInt(rupeeMatch[1], 10);
-    if (!Number.isNaN(cap)) maxRent = cap;
-  }
-
-  const nearMe = /\bnear\s+me\b/.test(lc) || /\bnearby\b/.test(lc);
-
-  let locationTerm: string | null = null;
-  const locMatch = lc.match(/\b(?:in|at|near)\s+(.+)$/i);
-  if (locMatch) {
-    let tail = locMatch[1]
-      .replace(/\b(me|nearby)\b/g, " ")
-      .replace(
-        /\b(with|without|under|below|upto|less\s+than|girls?|boys?|ladies|women|men|pgs?|mess(?:es)?|hostels?)\b.*$/i,
-        ""
-      )
-      .replace(/\s+/g, " ")
-      .trim();
-
-    if (tail) locationTerm = tail;
-  }
-
-  return { type, gender, amenities, maxRent, nearMe, locationTerm };
-}
-
-function haversineKm(
-  aLat: number,
-  aLon: number,
-  bLat: number,
-  bLon: number
-): number {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
+function haversine(a: Geo, b: Geo): number {
+  const toRad = (x: number) => (x * Math.PI) / 180;
   const R = 6371;
-  const dLat = toRad(bLat - aLat);
-  const dLon = toRad(bLon - aLon);
-  const s1 = Math.sin(dLat / 2);
-  const s2 = Math.sin(dLon / 2);
-  const aa =
-    s1 * s1 +
-    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * s2 * s2;
-  return 2 * R * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLon = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.sqrt(x));
 }
+
+function toGeo(p: api.Property): Geo | null {
+  if (p.latitude == null || p.longitude == null) return null;
+  return { latitude: p.latitude, longitude: p.longitude };
+}
+
+/* ───────────────────────── component ───────────────────────── */
 
 export default function AllPGsScreen() {
   const insets = useSafeAreaInsets();
   const { q } = useLocalSearchParams<{ q?: string }>();
-  const initialQuery = typeof q === "string" ? q : "";
 
   const [properties, setProperties] = useState<api.Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const [search, setSearch] = useState(initialQuery);
+  const [search, setSearch] = useState(typeof q === "string" ? q : "");
+
   const [activeFilter, setActiveFilter] = useState(0);
-  const [activeTypeFilter, setActiveTypeFilter] = useState<PropertyType | "all">("all");
   const [activeSort, setActiveSort] = useState(0);
-  const [deviceCoords, setDeviceCoords] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [deviceAreaHint, setDeviceAreaHint] = useState<string | null>(null);
-  const [locating, setLocating] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
 
-  // Sync ?q= param changes
-  useEffect(() => {
-    if (typeof q === "string") setSearch(q);
-  }, [q]);
+  const [deviceCoords, setDeviceCoords] = useState<Geo | null>(null);
 
-  const intent = useMemo(() => parseSearchIntent(search), [search]);
+  /**
+   * Resolved location from the search query.
+   * Carries `kind` ("college" | "place") so we know whether to apply radius.
+   */
+  const [resolvedLocation, setResolvedLocation] =
+    useState<ResolvedLocation | null>(null);
 
-  const fetchDeviceLocation = useCallback(async () => {
-    if (locating) return;
-    setLocating(true);
-    setLocationError(null);
-    try {
-      const perm = await Location.requestForegroundPermissionsAsync();
-      if (perm.status !== "granted") {
-        setLocationError("Location permission denied. Allow location access to use near-me search.");
-        return;
-      }
-
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const nextCoords = {
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-      };
-      setDeviceCoords(nextCoords);
-
-      const reverse = await Location.reverseGeocodeAsync(nextCoords);
-      const first = reverse[0];
-      const areaHint =
-        first?.city ||
-        first?.district ||
-        first?.subregion ||
-        first?.region ||
-        null;
-      setDeviceAreaHint(areaHint);
-    } catch {
-      setLocationError("Could not fetch device location. Please try again.");
-    } finally {
-      setLocating(false);
-    }
-  }, [locating]);
-
-  useEffect(() => {
-    if (intent.nearMe && !deviceCoords && !locating) {
-      fetchDeviceLocation();
-    }
-  }, [intent.nearMe, deviceCoords, locating, fetchDeviceLocation]);
+  /* ───────────────── load properties ───────────────── */
 
   const load = useCallback(async () => {
     try {
-      setError(null);
-      const list = await api.listProperties();
-      setProperties(list.filter((p) => p.isAvailable));
-    } catch (err: any) {
-      setError(err?.message || "Couldn't load properties");
+      const data = await api.listProperties();
+      setProperties(data.filter((p) => p.isAvailable));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -196,491 +94,296 @@ export default function AllPGsScreen() {
     load();
   }, [load]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = () => {
     setRefreshing(true);
     load();
-  }, [load]);
+  };
 
-  const filtered = useMemo(() => {
-    let list = [...properties];
-    const distanceById = new Map<string, number>();
-    const intentType = intent.type;
+  /* ───────────────── location resolver ───────────────── */
 
-    // Query-intent type overrides chip type to honor explicit user request.
-    const resolvedType =
-      intentType || (activeTypeFilter !== "all" ? activeTypeFilter : null);
-    if (resolvedType) {
-      list = list.filter((p) => p.propertyType === resolvedType);
-    }
+  useEffect(() => {
+    let cancelled = false;
 
-    if (intent.gender) {
-      list = list.filter((p) => p.gender === intent.gender || p.gender === "any");
-    }
+    async function run() {
+      const trimmed = search.trim();
 
-    if (intent.amenities.length > 0) {
-      list = list.filter((p) => intent.amenities.every((a) => p.facilities.includes(a)));
-    }
+      if (!trimmed) {
+        setResolvedLocation(null);
+        return;
+      }
 
-    if (intent.maxRent !== null) {
-      list = list.filter((p) => p.rent <= intent.maxRent!);
-    }
+      const geo = await resolveLocation(trimmed);
 
-    if (intent.locationTerm) {
-      const term = intent.locationTerm;
-      list = list.filter((p) => {
-        const city = normalize(p.city);
-        const location = normalize(p.location);
-        return city.includes(term) || location.includes(term);
-      });
-    }
-
-    if (intent.nearMe) {
-      if (deviceCoords) {
-        const withCoords = list
-          .filter(
-            (p) => typeof p.latitude === "number" && typeof p.longitude === "number"
-          )
-          .map((p) => {
-            const d = haversineKm(
-              deviceCoords.latitude,
-              deviceCoords.longitude,
-              p.latitude as number,
-              p.longitude as number
-            );
-            distanceById.set(p.id, d);
-            return { property: p, distance: d };
-          });
-
-        const nearby = withCoords
-          .filter((entry) => entry.distance <= 25)
-          .sort((a, b) => a.distance - b.distance)
-          .map((entry) => entry.property);
-
-        const fallbackByDistance = withCoords
-          .sort((a, b) => a.distance - b.distance)
-          .map((entry) => entry.property);
-
-        const withoutCoords = list.filter(
-          (p) => typeof p.latitude !== "number" || typeof p.longitude !== "number"
-        );
-
-        const areaMatched = deviceAreaHint
-          ? withoutCoords.filter((p) => {
-              const city = normalize(p.city);
-              const location = normalize(p.location);
-              const area = normalize(deviceAreaHint);
-              return city.includes(area) || location.includes(area);
-            })
-          : [];
-
-        list = [
-          ...(nearby.length > 0 ? nearby : fallbackByDistance),
-          ...areaMatched,
-        ];
-      } else if (deviceAreaHint) {
-        const area = normalize(deviceAreaHint);
-        list = list.filter((p) => {
-          const city = normalize(p.city);
-          const location = normalize(p.location);
-          return city.includes(area) || location.includes(area);
-        });
+      if (!cancelled) {
+        setResolvedLocation(geo);
       }
     }
 
-    // Generic fallback text search when no structural intent is detected.
-    const trimmed = search.trim();
-    if (
-      trimmed &&
-      !intent.nearMe &&
-      !intent.locationTerm &&
-      !intent.type &&
-      !intent.gender &&
-      intent.amenities.length === 0 &&
-      intent.maxRent === null
-    ) {
-      const lc = normalize(trimmed);
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [search]);
+
+  /* ───────────────── device location ───────────────── */
+
+  useEffect(() => {
+    async function fetchDeviceLocation() {
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (perm.status !== "granted") return;
+
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      setDeviceCoords({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      });
+    }
+    fetchDeviceLocation();
+  }, []);
+
+  /* ───────────────── search engine ───────────────── */
+
+  const isCollegeMode =
+    resolvedLocation?.kind === "college" && !!resolvedLocation;
+
+  const results = useMemo(() => {
+    let list = [...properties];
+    const query = normalize(search);
+
+    /* ── COLLEGE MODE ───────────────────────────────────────────
+       Student searched for a college / university / institute.
+       Strategy:
+         1. Convert resolved college lat/lng to a reference Geo point.
+         2. Filter properties that have coordinates AND are within 10 km.
+         3. Sort by distance closest → farthest.
+         4. Apply rent filter on top (no manual sort override for distance).
+    ────────────────────────────────────────────────────────────── */
+    if (resolvedLocation?.kind === "college") {
+      const ref: Geo = {
+        latitude: resolvedLocation.lat,
+        longitude: resolvedLocation.lng,
+      };
+
+      // Filter: must have coordinates + within radius
+      list = list.filter((p) => {
+        const geo = toGeo(p);
+        if (!geo) return false;
+        return haversine(ref, geo) <= COLLEGE_RADIUS_KM;
+      });
+
+      // Sort: closest first
+      list.sort((a, b) => {
+        const geoA = toGeo(a)!;
+        const geoB = toGeo(b)!;
+        return haversine(ref, geoA) - haversine(ref, geoB);
+      });
+
+      // Apply rent filter (college mode ignores manual sort — distance is king)
+      if (activeFilter === 1) list = list.filter((p) => p.rent <= 8000);
+      else if (activeFilter === 2) list = list.filter((p) => p.rent <= 10000);
+      else if (activeFilter === 3) list = list.filter((p) => p.rent <= 12000);
+      else if (activeFilter === 4) list = list.filter((p) => p.rent > 12000);
+
+      return list;
+    }
+
+    /* ── NORMAL MODE ────────────────────────────────────────────
+       City / locality / free-text search.
+       1. Text match on name, city, location.
+       2. If a geo was resolved (e.g. city centroid), sort by proximity.
+       3. Apply rent filter.
+       4. Apply manual sort (overrides proximity sort if chosen).
+    ────────────────────────────────────────────────────────────── */
+
+    // 1. Text search
+    if (query) {
       list = list.filter(
         (p) =>
-          normalize(p.name).includes(lc) ||
-          normalize(p.location).includes(lc) ||
-          normalize(p.city).includes(lc)
+          normalize(p.name).includes(query) ||
+          normalize(p.city).includes(query) ||
+          normalize(p.location).includes(query)
       );
     }
 
-    // Budget filter chips
+    // 2. Geo priority (resolved place or device location)
+    const geo = resolvedLocation
+      ? { latitude: resolvedLocation.lat, longitude: resolvedLocation.lng }
+      : deviceCoords;
+
+    if (geo) {
+      list.sort((a, b) => {
+        const geoA = toGeo(a);
+        const geoB = toGeo(b);
+        if (!geoA || !geoB) return 0;
+        return haversine(geo, geoA) - haversine(geo, geoB);
+      });
+    }
+
+    // 3. Rent filters
     if (activeFilter === 1) list = list.filter((p) => p.rent <= 8000);
     else if (activeFilter === 2) list = list.filter((p) => p.rent <= 10000);
     else if (activeFilter === 3) list = list.filter((p) => p.rent <= 12000);
     else if (activeFilter === 4) list = list.filter((p) => p.rent > 12000);
 
-    // Sort
+    // 4. Manual sort (only in normal mode)
     if (activeSort === 1) list.sort((a, b) => a.rent - b.rent);
     else if (activeSort === 2) list.sort((a, b) => b.rent - a.rent);
-    else if (intent.nearMe && deviceCoords) {
-      list.sort((a, b) => {
-        const aD = distanceById.get(a.id) ?? Number.MAX_SAFE_INTEGER;
-        const bD = distanceById.get(b.id) ?? Number.MAX_SAFE_INTEGER;
-        return aD - bD;
-      });
+    else if (!geo) {
+      // Default: recent — only if no geo sort is active
+      list.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
     }
-    else list.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
 
     return list;
   }, [
     properties,
     search,
-    intent,
-    deviceCoords,
-    deviceAreaHint,
     activeFilter,
-    activeTypeFilter,
     activeSort,
+    deviceCoords,
+    resolvedLocation,
   ]);
+
+  /* ───────────────── UI ───────────────── */
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
       {/* Header */}
-      <View
-        style={{
-          backgroundColor: "#fff",
-          paddingTop: insets.top + 8,
-          paddingBottom: 12,
-          paddingHorizontal: 16,
-          borderBottomWidth: 1,
-          borderBottomColor: "#F1F5F9",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.04,
-          shadowRadius: 8,
-          elevation: 2,
-        }}
-      >
-        <View
+      <View style={{ paddingTop: insets.top + 10, padding: 16 }}>
+        <Text style={{ fontSize: 18, fontWeight: "800" }}>Explore PGs</Text>
+
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search PG, college, city, or locality"
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 12,
-            marginBottom: 12,
+            marginTop: 10,
+            backgroundColor: "#fff",
+            padding: 12,
+            borderRadius: 10,
           }}
-        >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 19,
-              backgroundColor: "#F1F5F9",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <CaretLeft size={18} color="#0F172A" weight="bold" />
-          </TouchableOpacity>
+        />
 
-          <View style={{ flex: 1 }}>
-            <Text
-              numberOfLines={1}
-              style={{ fontSize: 18, fontWeight: "800", color: "#0F172A" }}
-            >
-              {search.trim()
-                ? `Results for "${search.trim()}"`
-                : "Explore PGs"}
-            </Text>
-            <Text style={{ fontSize: 12, color: "#94A3B8", marginTop: 1 }}>
-              {loading
-                ? "Loading..."
-                : `${filtered.length} listing${filtered.length !== 1 ? "s" : ""} found`}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 19,
-              backgroundColor: "#EFF6FF",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <SlidersHorizontal size={18} color="#2563EB" weight="bold" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Search bar */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            backgroundColor: "#F8FAFC",
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: "#E2E8F0",
-            paddingHorizontal: 12,
-            paddingVertical: 2,
-          }}
-        >
-          <MagnifyingGlass size={16} color="#94A3B8" weight="bold" />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search by name or locality..."
-            placeholderTextColor="#94A3B8"
-            style={{
-              flex: 1,
-              fontSize: 14,
-              color: "#0F172A",
-              paddingHorizontal: 10,
-              paddingVertical: 10,
-            }}
-          />
-          {search.length > 0 ? (
-            <TouchableOpacity onPress={() => setSearch("")} hitSlop={8}>
-              <X size={16} color="#94A3B8" weight="bold" />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-
-        {intent.nearMe ? (
-          <View
-            style={{
-              marginTop: 10,
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              borderRadius: 12,
-              backgroundColor: "#EFF6FF",
-              borderWidth: 1,
-              borderColor: "#BFDBFE",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 10,
-            }}
-          >
-            <Text style={{ flex: 1, fontSize: 12, color: "#1E40AF", fontWeight: "600" }}>
-              {locating
-                ? "Fetching your location for nearby results..."
-                : locationError
-                ? locationError
-                : deviceCoords
-                ? "Showing nearest results using your device location."
-                : "Using location-based intent."}
-            </Text>
-            {!locating ? (
-              <TouchableOpacity onPress={fetchDeviceLocation}>
-                <Text style={{ fontSize: 12, fontWeight: "800", color: "#2563EB" }}>
-                  Retry
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ) : null}
-      </View>
-
-      {loading && !refreshing ? (
-        <View
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
-          <ActivityIndicator size="large" color="#2563EB" />
-        </View>
-      ) : (
+        {/* Filter chips */}
         <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#2563EB"
-            />
-          }
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginTop: 10 }}
         >
-          {/* Filter Chips */}
+          {FILTERS.map((f, i) => (
+            <TouchableOpacity
+              key={f}
+              onPress={() => setActiveFilter(i)}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                borderRadius: 20,
+                marginRight: 8,
+                backgroundColor: activeFilter === i ? "#6366F1" : "#fff",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: activeFilter === i ? "#fff" : "#374151",
+                  fontWeight: "600",
+                }}
+              >
+                {f}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Sort chips — hidden in college mode (distance always wins) */}
+        {!isCollegeMode && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: 16,
-              gap: 8,
-              paddingVertical: 14,
-            }}
+            style={{ marginTop: 8 }}
           >
-            {FILTERS.map((f, i) => {
-              const active = activeFilter === i;
-              return (
-                <TouchableOpacity
-                  key={f}
-                  onPress={() => setActiveFilter(i)}
-                  activeOpacity={0.8}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 7,
-                    borderRadius: 20,
-                    backgroundColor: active ? "#2563EB" : "#fff",
-                    borderWidth: 1.5,
-                    borderColor: active ? "#2563EB" : "#E2E8F0",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "600",
-                      color: active ? "#fff" : "#475569",
-                    }}
-                  >
-                    {f}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Type Chips */}
-          {/* <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: 16,
-              gap: 8,
-              paddingBottom: 10,
-            }}
-          >
-            {TYPE_CHIPS.map((chip) => {
-              const active = activeTypeFilter === chip.value;
-              return (
-                <TouchableOpacity
-                  key={chip.value}
-                  onPress={() => setActiveTypeFilter(chip.value)}
-                  activeOpacity={0.8}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 7,
-                    borderRadius: 20,
-                    backgroundColor: active ? "#2563EB" : "#fff",
-                    borderWidth: 1.5,
-                    borderColor: active ? "#2563EB" : "#E2E8F0",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "600",
-                      color: active ? "#fff" : "#475569",
-                    }}
-                  >
-                    {chip.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView> */}
-
-          {/* Sort Row */}
-          <View style={{ paddingHorizontal: 16, marginBottom: 14 }}>
-            <Text
-              style={{
-                fontSize: 12,
-                color: "#94A3B8",
-                fontWeight: "500",
-                marginBottom: 8,
-              }}
-            >
-              Sort by
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8 }}
-            >
-              {SORTS.map((s, i) => {
-                const active = activeSort === i;
-                return (
-                  <TouchableOpacity
-                    key={s}
-                    onPress={() => setActiveSort(i)}
-                    activeOpacity={0.8}
-                    style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 6,
-                      borderRadius: 10,
-                      backgroundColor: active ? "#0F172A" : "#F1F5F9",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: "600",
-                        color: active ? "#fff" : "#64748B",
-                      }}
-                    >
-                      {s}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Error */}
-          {error ? (
-            <View
-              style={{
-                marginHorizontal: 16,
-                marginBottom: 12,
-                backgroundColor: "#FEF2F2",
-                borderWidth: 1,
-                borderColor: "#FECACA",
-                borderRadius: 12,
-                padding: 12,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              <Text style={{ flex: 1, fontSize: 12, color: "#991B1B" }}>
-                {error}
-              </Text>
-              <TouchableOpacity onPress={onRefresh}>
+            {SORTS.map((s, i) => (
+              <TouchableOpacity
+                key={s}
+                onPress={() => setActiveSort(i)}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 6,
+                  borderRadius: 20,
+                  marginRight: 8,
+                  backgroundColor: activeSort === i ? "#0EA5E9" : "#fff",
+                }}
+              >
                 <Text
-                  style={{ fontSize: 12, fontWeight: "800", color: "#DC2626" }}
+                  style={{
+                    fontSize: 13,
+                    color: activeSort === i ? "#fff" : "#374151",
+                    fontWeight: "600",
+                  }}
                 >
-                  Retry
+                  {s}
                 </Text>
               </TouchableOpacity>
-            </View>
-          ) : null}
+            ))}
+          </ScrollView>
+        )}
+      </View>
 
-          {/* Listings */}
-          <View style={{ paddingHorizontal: 16, gap: 14 }}>
-            {filtered.length === 0 ? (
-              <View style={{ alignItems: "center", paddingVertical: 60 }}>
-                <MagnifyingGlass size={48} color="#CBD5E1" weight="duotone" />
-                <Text
-                  style={{
-                    marginTop: 12,
-                    fontSize: 16,
-                    fontWeight: "600",
-                    color: "#94A3B8",
-                  }}
-                >
-                  No listings found
-                </Text>
-                <Text
-                  style={{ fontSize: 13, color: "#CBD5E1", marginTop: 4 }}
-                >
-                  Try adjusting your search or filters
-                </Text>
-              </View>
-            ) : (
-              filtered.map((p) => (
-                <PropertyListCard key={p.id} property={p} />
-              ))
-            )}
-          </View>
-        </ScrollView>
+      {/* College mode banner */}
+      {isCollegeMode && (
+        <View
+          style={{
+            marginHorizontal: 16,
+            marginBottom: 8,
+            backgroundColor: "#EEF2FF",
+            borderRadius: 10,
+            padding: 10,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <Text style={{ fontSize: 13, color: "#4F46E5", flex: 1 }}>
+            📍 Showing PGs within {COLLEGE_RADIUS_KM} km of{" "}
+            <Text style={{ fontWeight: "700" }}>
+              {resolvedLocation?.displayName?.split(",")[0] ?? "college"}
+            </Text>
+            , sorted by distance
+          </Text>
+        </View>
+      )}
+
+      {loading ? (
+        <ActivityIndicator size="large" style={{ marginTop: 40 }} />
+      ) : results.length === 0 ? (
+        <View style={{ alignItems: "center", marginTop: 60 }}>
+          <Text style={{ fontSize: 15, color: "#9CA3AF" }}>
+            {isCollegeMode
+              ? `No PGs found within ${COLLEGE_RADIUS_KM} km of this college`
+              : "No results found"}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={results}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <PropertyListCard property={item} />
+          )}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingBottom: 24,
+          }}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        />
       )}
     </View>
   );

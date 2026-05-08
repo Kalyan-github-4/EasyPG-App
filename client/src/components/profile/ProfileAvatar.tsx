@@ -83,6 +83,11 @@ export default function ProfileAvatar({
           justifyContent: "center",
           borderWidth: 2,
           borderColor: "#fff",
+          elevation: 4,
+          shadowColor: "#0F172A",
+          shadowOpacity: 0.18,
+          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 2 },
         }}
       >
         <Ionicons name="camera" size={12} color="#fff" />

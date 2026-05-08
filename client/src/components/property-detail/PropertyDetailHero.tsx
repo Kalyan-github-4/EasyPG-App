@@ -44,7 +44,7 @@ export default function PropertyDetailHero({
   const hasPhotos = photos.length > 0;
 
   return (
-    <View style={{ height: HERO_HEIGHT, backgroundColor: "#E2E8F0" }}>
+    <View className="h-[320px] bg-slate-200">
       {hasPhotos ? (
         <ScrollView
           horizontal
@@ -63,7 +63,7 @@ export default function PropertyDetailHero({
           ))}
         </ScrollView>
       ) : (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <View className="items-center justify-center flex-1">
           <HouseIcon size={64} color="#94A3B8" weight="duotone" />
         </View>
       )}
@@ -103,17 +103,8 @@ function HeaderActionButtons({
     <>
       <TouchableOpacity
         onPress={onBack}
-        style={{
-          position: "absolute",
-          top: topInset + 12,
-          left: 16,
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: "rgba(0,0,0,0.32)",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        style={{ top: topInset + 12 }}
+        className="absolute items-center justify-center w-10 h-10 rounded-full left-4 bg-black/30"
       >
         <ArrowLeftIcon size={20} color="#fff" weight="bold" />
       </TouchableOpacity>
@@ -121,17 +112,10 @@ function HeaderActionButtons({
       <TouchableOpacity
         onPress={onToggleSave}
         disabled={savingToggle}
-        style={{
-          position: "absolute",
-          top: topInset + 12,
-          right: 66,
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: saved ? "rgba(255,255,255,0.95)" : "rgba(0,0,0,0.32)",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        style={{ top: topInset + 12 }}
+        className={`absolute right-[66px] w-10 h-10 rounded-full items-center justify-center ${
+          saved ? "bg-white/95" : "bg-black/30"
+        }`}
       >
         <HeartIcon
           size={20}
@@ -142,17 +126,8 @@ function HeaderActionButtons({
 
       <TouchableOpacity
         onPress={onShare}
-        style={{
-          position: "absolute",
-          top: topInset + 12,
-          right: 16,
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: "rgba(0,0,0,0.32)",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        style={{ top: topInset + 12 }}
+        className="absolute items-center justify-center w-10 h-10 rounded-full right-4 bg-black/30"
       >
         <Ionicons name="share-social-outline" size={20} color="#fff" />
       </TouchableOpacity>
@@ -169,41 +144,18 @@ function CounterDots({
 }) {
   return (
     <>
-      <View
-        style={{
-          position: "absolute",
-          bottom: 14,
-          right: 16,
-          backgroundColor: "rgba(0,0,0,0.55)",
-          borderRadius: 12,
-          paddingHorizontal: 10,
-          paddingVertical: 4,
-        }}
-      >
-        <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>
+      <View className="absolute bottom-[30px] right-4 bg-black/55 rounded-2xl px-2.5 py-1">
+        <Text className="text-xs font-bold text-white">
           {imgIndex + 1} / {photosLength}
         </Text>
       </View>
-      <View
-        style={{
-          position: "absolute",
-          bottom: 16,
-          left: 0,
-          right: 0,
-          flexDirection: "row",
-          justifyContent: "center",
-          gap: 6,
-        }}
-      >
+      <View className="absolute bottom-4 left-0 right-0 flex-row justify-center gap-1.5">
         {Array.from({ length: photosLength }).map((_, i) => (
           <View
             key={i}
-            style={{
-              width: i === imgIndex ? 20 : 6,
-              height: 6,
-              borderRadius: 3,
-              backgroundColor: i === imgIndex ? "#fff" : "rgba(255,255,255,0.45)",
-            }}
+            className={`h-1.5 rounded-full ${
+              i === imgIndex ? "w-5 bg-white" : "w-1.5 bg-white/45"
+            }`}
           />
         ))}
       </View>

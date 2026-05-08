@@ -125,7 +125,7 @@ export default function NearbyPropertySheet({
         elevation: 12,
       }}
     >
-      <View className="mb-3 flex-row items-start justify-between gap-3">
+      <View className="flex-row items-start justify-between gap-3 mb-3">
         <View className="flex-1">
           <Text className="text-xl font-extrabold tracking-[-0.3px] text-slate-900">Near you</Text>
           <Text className="mt-1 text-xs text-slate-500">
@@ -172,10 +172,14 @@ export default function NearbyPropertySheet({
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={onOpenDirections}
-          className="mt-2 flex-row items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2.5"
+          className="mt-2 flex-row items-center justify-center rounded-xl bg-blue-600 px-3 py-2.5"
         >
           <Ionicons name="navigate" size={18} color="#fff" />
-          <Text className="flex-1 text-[13px] font-extrabold text-white" numberOfLines={1}>
+
+          <Text
+            className="ml-2 text-[13px] font-extrabold text-white"
+            numberOfLines={1}
+          >
             Navigate to {selectedProperty.name}
           </Text>
         </TouchableOpacity>
