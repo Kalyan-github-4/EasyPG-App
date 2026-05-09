@@ -1,6 +1,6 @@
 import express from "express";
 import { z } from "zod";
-import { eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import {
@@ -16,6 +16,8 @@ import { syncUser, requireRole } from "../middleware/auth.js";
 import { deleteImages } from "../services/cloudinary.js";
 
 const router = express.Router();
+const DEFAULT_PAGE_LIMIT = 20;
+const MAX_PAGE_LIMIT = 50;
 
 // ─── Validation ──────────────────────────────────────────
 
@@ -86,21 +88,68 @@ function getRouteParamId(id: string | string[] | undefined) {
   return null;
 }
 
+function parsePagination(query: Record<string, unknown>) {
+  const hasLimit = query.limit !== undefined;
+  const hasOffset = query.offset !== undefined;
+  if (!hasLimit && !hasOffset) return null;
+
+  const rawLimit = Number(query.limit);
+  const rawOffset = Number(query.offset);
+
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(Math.max(Math.trunc(rawLimit), 1), MAX_PAGE_LIMIT)
+    : DEFAULT_PAGE_LIMIT;
+  const offset = Number.isFinite(rawOffset)
+    ? Math.max(Math.trunc(rawOffset), 0)
+    : 0;
+
+  return { limit, offset };
+}
+
 // ─── Routes ──────────────────────────────────────────────
 
 // GET /properties — public list
-router.get("/", async (_req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const all = await db.select().from(properties);
-    if (all.length === 0) return res.json({ success: true, properties: [] });
+    const pagination = parsePagination(req.query as Record<string, unknown>);
+    const limit = pagination?.limit ?? DEFAULT_PAGE_LIMIT;
+    const offset = pagination?.offset ?? 0;
 
-    const ids = all.map((p) => p.id);
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(properties);
+    const total = Number(count) || 0;
+    if (total === 0) {
+      return res.json({
+        success: true,
+        properties: [],
+        pagination: { limit, offset, total, hasMore: false, nextOffset: null },
+      });
+    }
+
+    const page = pagination
+      ? await db
+          .select()
+          .from(properties)
+          .orderBy(desc(properties.createdAt))
+          .limit(limit)
+          .offset(offset)
+      : await db.select().from(properties).orderBy(desc(properties.createdAt));
+    if (page.length === 0) {
+      return res.json({
+        success: true,
+        properties: [],
+        pagination: { limit, offset, total, hasMore: false, nextOffset: null },
+      });
+    }
+
+    const ids = page.map((p) => p.id);
     const [photos, facs] = await Promise.all([
       db.select().from(propertyPhotos).where(inArray(propertyPhotos.propertyId, ids)),
       db.select().from(facilities).where(inArray(facilities.propertyId, ids)),
     ]);
 
-    const enriched = all.map((p) => ({
+    const enriched = page.map((p) => ({
       ...p,
       photos: photos
         .filter((ph) => ph.propertyId === p.id)
@@ -108,7 +157,24 @@ router.get("/", async (_req, res) => {
       facilities: facs.filter((f) => f.propertyId === p.id).map((f) => f.type),
     }));
 
-    res.json({ success: true, properties: enriched });
+    if (!pagination) {
+      return res.json({ success: true, properties: enriched });
+    }
+
+    const nextOffset = offset + enriched.length;
+    const hasMore = nextOffset < total;
+
+    res.json({
+      success: true,
+      properties: enriched,
+      pagination: {
+        limit,
+        offset,
+        total,
+        hasMore,
+        nextOffset: hasMore ? nextOffset : null,
+      },
+    });
   } catch (err) {
     console.error("List properties error:", err);
     res.status(500).json({ success: false, message: "Failed to list properties" });
@@ -118,21 +184,52 @@ router.get("/", async (_req, res) => {
 // GET /properties/me — host's own properties
 router.get("/me", syncUser, requireRole("host"), async (req, res) => {
   try {
+    const pagination = parsePagination(req.query as Record<string, unknown>);
+    const limit = pagination?.limit ?? DEFAULT_PAGE_LIMIT;
+    const offset = pagination?.offset ?? 0;
     const dbUser = (req as any).dbUser;
-    const mine = await db
-      .select()
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
       .from(properties)
       .where(eq(properties.hostId, dbUser.id));
 
-    if (mine.length === 0) return res.json({ success: true, properties: [] });
+    const total = Number(count) || 0;
+    if (total === 0) {
+      return res.json({
+        success: true,
+        properties: [],
+        pagination: { limit, offset, total, hasMore: false, nextOffset: null },
+      });
+    }
 
-    const ids = mine.map((p) => p.id);
+    const page = pagination
+      ? await db
+          .select()
+          .from(properties)
+          .where(eq(properties.hostId, dbUser.id))
+          .orderBy(desc(properties.createdAt))
+          .limit(limit)
+          .offset(offset)
+      : await db
+          .select()
+          .from(properties)
+          .where(eq(properties.hostId, dbUser.id))
+          .orderBy(desc(properties.createdAt));
+    if (page.length === 0) {
+      return res.json({
+        success: true,
+        properties: [],
+        pagination: { limit, offset, total, hasMore: false, nextOffset: null },
+      });
+    }
+
+    const ids = page.map((p) => p.id);
     const [photos, facs] = await Promise.all([
       db.select().from(propertyPhotos).where(inArray(propertyPhotos.propertyId, ids)),
       db.select().from(facilities).where(inArray(facilities.propertyId, ids)),
     ]);
 
-    const enriched = mine.map((p) => ({
+    const enriched = page.map((p) => ({
       ...p,
       photos: photos
         .filter((ph) => ph.propertyId === p.id)
@@ -140,7 +237,24 @@ router.get("/me", syncUser, requireRole("host"), async (req, res) => {
       facilities: facs.filter((f) => f.propertyId === p.id).map((f) => f.type),
     }));
 
-    res.json({ success: true, properties: enriched });
+    if (!pagination) {
+      return res.json({ success: true, properties: enriched });
+    }
+
+    const nextOffset = offset + enriched.length;
+    const hasMore = nextOffset < total;
+
+    res.json({
+      success: true,
+      properties: enriched,
+      pagination: {
+        limit,
+        offset,
+        total,
+        hasMore,
+        nextOffset: hasMore ? nextOffset : null,
+      },
+    });
   } catch (err) {
     console.error("List my properties error:", err);
     res.status(500).json({ success: false, message: "Failed to list properties" });
