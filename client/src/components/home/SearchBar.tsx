@@ -13,7 +13,7 @@ export default function SearchBar({
   onPress,
   onFilterPress,
   activeFilterCount,
-  placeholder = "Try 'PG at Jhargram' or 'PG near me'",
+  placeholder = "Search 'mess near me', 'pg under 5000'...",
 }: Props) {
   const hasFilters = activeFilterCount > 0;
 

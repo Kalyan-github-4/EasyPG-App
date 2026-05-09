@@ -6,9 +6,11 @@ import type { Property } from "@/src/services/api";
 
 type Props = {
   property: Property;
+  /** Optional distance in km (shown as badge when searching by location) */
+  distanceKm?: number;
 };
 
-export default function PropertyListCard({ property }: Props) {
+export default function PropertyListCard({ property, distanceKm }: Props) {
   const facilityLabels = property.facilities.slice(0, 3).map(formatFacility);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [imageWidth, setImageWidth] = useState(320);
@@ -182,6 +184,22 @@ export default function PropertyListCard({ property }: Props) {
           >
             {property.location}
           </Text>
+          {distanceKm != null ? (
+            <View
+              style={{
+                backgroundColor: "#EFF6FF",
+                borderRadius: 8,
+                paddingHorizontal: 7,
+                paddingVertical: 3,
+              }}
+            >
+              <Text style={{ fontSize: 10, fontWeight: "700", color: "#2563EB" }}>
+                {distanceKm < 1
+                  ? `${Math.round(distanceKm * 1000)} m`
+                  : `${distanceKm.toFixed(1)} km`}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Facilities */}

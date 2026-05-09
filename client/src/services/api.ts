@@ -250,11 +250,49 @@ export interface PropertyInput {
 interface PropertyListResponse {
   success: boolean;
   properties: Property[];
+  pagination?: {
+    limit: number;
+    offset: number;
+    total: number;
+    hasMore: boolean;
+    nextOffset: number | null;
+  };
 }
 
 interface PropertyResponse {
   success: boolean;
   property: Property;
+}
+
+export type PaginationOptions = {
+  limit?: number;
+  offset?: number;
+};
+
+export type PropertyPage = {
+  properties: Property[];
+  pagination: {
+    limit: number;
+    offset: number;
+    total: number;
+    hasMore: boolean;
+    nextOffset: number | null;
+  };
+};
+
+function withPagination(endpoint: string, options?: PaginationOptions): string {
+  if (!options) return endpoint;
+  const params = new URLSearchParams();
+
+  if (typeof options.limit === "number") {
+    params.set("limit", String(options.limit));
+  }
+  if (typeof options.offset === "number") {
+    params.set("offset", String(options.offset));
+  }
+
+  const query = params.toString();
+  return query ? `${endpoint}?${query}` : endpoint;
 }
 
 /** Public list of all properties */
@@ -263,10 +301,47 @@ export async function listProperties(): Promise<Property[]> {
   return res.properties;
 }
 
+/** Public paginated list of properties */
+export async function listPropertiesPage(
+  options?: PaginationOptions
+): Promise<PropertyPage> {
+  const endpoint = withPagination("/properties", options);
+  const res = await request<PropertyListResponse>(endpoint);
+  return {
+    properties: res.properties,
+    pagination: res.pagination ?? {
+      limit: options?.limit ?? res.properties.length,
+      offset: options?.offset ?? 0,
+      total: res.properties.length,
+      hasMore: false,
+      nextOffset: null,
+    },
+  };
+}
+
 /** Host's own properties */
 export async function listMyProperties(token: string): Promise<Property[]> {
   const res = await request<PropertyListResponse>("/properties/me", { token });
   return res.properties;
+}
+
+/** Host's own paginated properties */
+export async function listMyPropertiesPage(
+  token: string,
+  options?: PaginationOptions
+): Promise<PropertyPage> {
+  const endpoint = withPagination("/properties/me", options);
+  const res = await request<PropertyListResponse>(endpoint, { token });
+  return {
+    properties: res.properties,
+    pagination: res.pagination ?? {
+      limit: options?.limit ?? res.properties.length,
+      offset: options?.offset ?? 0,
+      total: res.properties.length,
+      hasMore: false,
+      nextOffset: null,
+    },
+  };
 }
 
 /** Public property detail */

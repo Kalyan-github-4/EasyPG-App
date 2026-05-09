@@ -1,6 +1,9 @@
 import React from "react";
 import { View, Text, Image, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Bell, GearSix } from "phosphor-react-native";
+import { router } from "expo-router";
+import { useNotifications } from "@/src/hooks/useNotifications";
 
 type Props = {
   firstName: string;
@@ -17,100 +20,177 @@ function greetingFor(date = new Date()) {
 }
 
 export default function HostHeader({ firstName, avatarUrl, subtitle, onProfilePress }: Props) {
+  const { unreadCount } = useNotifications();
+
   return (
     <LinearGradient
-      colors={["#1D4ED8", "#60A5FA"]}
+      colors={["#0F172A", "#1E3A8A", "#2563EB"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={{ borderBottomLeftRadius: 30, borderBottomRightRadius: 30 }}
+      style={{
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+      }}
     >
       <View
         style={{
           paddingHorizontal: 24,
-          paddingTop: 18,
-          paddingBottom: 20,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
+          paddingTop: 14,
+          paddingBottom: 24,
         }}
       >
-        <View style={{ flex: 1, paddingRight: 12 }}>
-          <Text
-            style={{
-              fontSize: 14,
-              color: "rgba(255,255,255,0.8)",
-              fontWeight: "700",
-              letterSpacing: 0.2,
-              textTransform: "uppercase",
-            }}
+        {/* Top row: avatar + actions */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 20,
+          }}
+        >
+          {/* Avatar + name */}
+          <TouchableOpacity
+            onPress={onProfilePress}
+            activeOpacity={0.85}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
           >
-            Host dashboard
-          </Text>
-          <Text
-            style={{
-              fontSize: 24,
-              color: "#fff",
-              fontWeight: "800",
-              marginTop: 4,
-              letterSpacing: -0.5,
-            }}
-          >
-            {greetingFor()} {firstName}
-          </Text>
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 23,
+                  borderWidth: 2,
+                  borderColor: "rgba(255,255,255,0.3)",
+                  backgroundColor: "#E2E8F0",
+                }}
+              />
+            ) : (
+              <View
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 23,
+                  backgroundColor: "rgba(255,255,255,0.15)",
+                  borderWidth: 2,
+                  borderColor: "rgba(255,255,255,0.2)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 18, fontWeight: "800", color: "#fff" }}>
+                  {firstName.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <View>
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "700",
+                  color: "rgba(255,255,255,0.6)",
+                  letterSpacing: 0.8,
+                  textTransform: "uppercase",
+                }}
+              >
+                Host Dashboard
+              </Text>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "800",
+                  color: "#fff",
+                  marginTop: 1,
+                  letterSpacing: -0.3,
+                }}
+              >
+                {greetingFor()}, {firstName}
+              </Text>
+            </View>
+          </TouchableOpacity>
 
-          {subtitle ? (
+          {/* Action icons */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {/* Bell */}
+            <TouchableOpacity
+              onPress={() => router.push("/(app)/inbox" as any)}
+              activeOpacity={0.8}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: "rgba(255,255,255,0.12)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Bell size={19} color="#fff" weight="regular" />
+              {unreadCount > 0 ? (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 4,
+                    right: 4,
+                    minWidth: 16,
+                    height: 16,
+                    paddingHorizontal: 4,
+                    borderRadius: 8,
+                    backgroundColor: "#EF4444",
+                    borderWidth: 1.5,
+                    borderColor: "#1E3A8A",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 9, fontWeight: "800", color: "#fff" }}>
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+
+            {/* Settings */}
+            <TouchableOpacity
+              onPress={() => router.push("/(app)/profile" as any)}
+              activeOpacity={0.8}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: "rgba(255,255,255,0.12)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <GearSix size={19} color="#fff" weight="regular" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Subtitle */}
+        {subtitle ? (
+          <View
+            style={{
+              backgroundColor: "rgba(255,255,255,0.1)",
+              borderRadius: 14,
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+            }}
+          >
             <Text
               style={{
                 fontSize: 13,
                 color: "rgba(255,255,255,0.85)",
-                marginTop: 6,
+                fontWeight: "600",
                 lineHeight: 19,
               }}
               numberOfLines={2}
             >
               {subtitle}
             </Text>
-          ) : null}
-        </View>
-
-        <TouchableOpacity onPress={onProfilePress} activeOpacity={0.85}>
-          {avatarUrl ? (
-            <Image
-              source={{ uri: avatarUrl }}
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                borderWidth: 2,
-                borderColor: "rgba(255,255,255,0.4)",
-                backgroundColor: "#E2E8F0",
-              }}
-            />
-          ) : (
-            <View
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                backgroundColor: "rgba(255,255,255,0.18)",
-                borderWidth: 2,
-                borderColor: "rgba(255,255,255,0.25)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontWeight: "800",
-                  color: "#fff",
-                }}
-              >
-                {firstName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
     </LinearGradient>
   );

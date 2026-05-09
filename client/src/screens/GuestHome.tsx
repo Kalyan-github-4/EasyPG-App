@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, ScrollView } from "react-native";
 import { router } from "expo-router";
 import HeroHeader from "@/src/components/home/HeroHeader";
@@ -109,6 +109,7 @@ function applyFilters(
 // ─── Screen ────────────────────────────────────────────────────────
 
 export default function GuestHome({ firstName: _firstName }: Props) {
+  const PAGE_SIZE = 20;
   const [saved, setSaved] = useState<string[]>([]);
   const [selectedCity, setSelectedCity] = useState<string>("1");
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
@@ -116,21 +117,76 @@ export default function GuestHome({ firstName: _firstName }: Props) {
 
   const [properties, setProperties] = useState<api.Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextOffset, setNextOffset] = useState<number | null>(0);
+  const [hasMore, setHasMore] = useState(true);
+  const isFetchingRef = useRef(false);
 
-  const loadProperties = useCallback(async () => {
+  const fetchPage = useCallback(async (offset: number, reset: boolean) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
+    if (reset) setLoading(true);
+    else setLoadingMore(true);
+
     try {
-      const list = await api.listProperties();
-      setProperties(list.filter((p) => p.isAvailable));
+      const { properties: batch, pagination } = await api.listPropertiesPage({
+        limit: PAGE_SIZE,
+        offset,
+      });
+
+      const availableBatch = batch.filter((p) => p.isAvailable);
+      setProperties((prev) => {
+        if (reset) return availableBatch;
+        const seen = new Set(prev.map((p) => p.id));
+        const deduped = availableBatch.filter((p) => !seen.has(p.id));
+        return [...prev, ...deduped];
+      });
+      setHasMore(pagination.hasMore);
+      setNextOffset(pagination.nextOffset);
     } catch {
       // Silent; empty state handles it
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+      isFetchingRef.current = false;
     }
   }, []);
 
+  const loadInitial = useCallback(() => {
+    setNextOffset(0);
+    setHasMore(true);
+    void fetchPage(0, true);
+  }, [fetchPage]);
+
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || !hasMore || nextOffset == null) return;
+    void fetchPage(nextOffset, false);
+  }, [fetchPage, hasMore, loading, loadingMore, nextOffset]);
+
   useEffect(() => {
-    loadProperties();
-  }, [loadProperties]);
+    loadInitial();
+  }, [loadInitial]);
+
+  const maybeLoadMoreOnScroll = useCallback(
+    (event: any) => {
+      if (loading || loadingMore || !hasMore || nextOffset == null) return;
+
+      const {
+        contentOffset,
+        contentSize,
+        layoutMeasurement,
+      } = event.nativeEvent;
+
+      const distanceFromBottom =
+        contentSize.height - (contentOffset.y + layoutMeasurement.height);
+
+      if (distanceFromBottom < 380) {
+        loadMore();
+      }
+    },
+    [hasMore, loadMore, loading, loadingMore, nextOffset]
+  );
 
   const toggleSave = (id: string) =>
     setSaved((prev) =>
@@ -170,6 +226,8 @@ export default function GuestHome({ firstName: _firstName }: Props) {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 90 }}
+        onScroll={maybeLoadMoreOnScroll}
+        scrollEventThrottle={120}
       >
         <HeroHeader
           onFilterPress={() => setShowFilterSheet(true)}
@@ -263,6 +321,17 @@ export default function GuestHome({ firstName: _firstName }: Props) {
             </View>
           ))
         )}
+
+        {loadingMore ? (
+          <View style={{ marginTop: 20, marginBottom: 12 }}>
+            <SectionHeader
+              title="Loading more"
+              subtitle="Fetching more listings as you scroll"
+              icon="refresh-outline"
+            />
+            <PropertyFeaturedRailSkeleton count={2} />
+          </View>
+        ) : null}
       </ScrollView>
 
       <FilterSheet

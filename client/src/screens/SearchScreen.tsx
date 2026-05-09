@@ -195,7 +195,7 @@ export default function SearchScreen() {
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={onSubmitEditing}
-            placeholder="Try 'pg near me', 'girls pg at kharagpur', 'pg with AC'"
+            placeholder="Search 'mess near me', 'girls pg under 5000'..."
             placeholderTextColor="#94A3B8"
             returnKeyType="search"
             autoCorrect={false}

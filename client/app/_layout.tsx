@@ -50,7 +50,7 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
         style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 32 }}
       >
         <Image
-          source={require("../assets/images/logo.png")}
+          source={require("../assets/images/icon.png")}
           style={{ width: 160, height: 60 }}
           resizeMode="contain"
         />
