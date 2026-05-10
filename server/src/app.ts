@@ -45,13 +45,11 @@ if (!isProd) {
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// ─── Timing Header (helps diagnose cold starts vs slow queries) ───
+// ─── Slow Request Logger (helps diagnose cold starts vs slow queries) ───
 app.use((req, res, next) => {
   const start = Date.now();
   res.on("finish", () => {
     const duration = Date.now() - start;
-    res.setHeader("X-Response-Time", `${duration}ms`);
-    // Log slow requests in production
     if (isProd && duration > 1000) {
       console.warn(`⚠️  Slow request: ${req.method} ${req.url} — ${duration}ms`);
     }
