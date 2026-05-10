@@ -27,6 +27,7 @@
     "@clerk/express": "^2.0.8",
     "@neondatabase/serverless": "^1.0.2",
     "cloudinary": "^2.9.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.0",
     "drizzle-orm": "^0.45.2",
@@ -37,6 +38,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/morgan": "^1.9.10",
