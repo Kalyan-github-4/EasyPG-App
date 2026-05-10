@@ -50,6 +50,43 @@ const updatePropertySchema = createPropertySchema.partial();
 
 // ─── Helpers ─────────────────────────────────────────────
 
+/** Batch-load photos + facilities for a set of property IDs in 2 parallel queries */
+async function batchEnrich(
+  page: (typeof properties.$inferSelect)[]
+): Promise<any[]> {
+  if (page.length === 0) return [];
+
+  const ids = page.map((p) => p.id);
+  const [photos, facs] = await Promise.all([
+    db.select().from(propertyPhotos).where(inArray(propertyPhotos.propertyId, ids)),
+    db.select().from(facilities).where(inArray(facilities.propertyId, ids)),
+  ]);
+
+  // Build lookup maps for O(1) access instead of O(n) filter per property
+  const photoMap = new Map<string, typeof photos>();
+  for (const ph of photos) {
+    const arr = photoMap.get(ph.propertyId) ?? [];
+    arr.push(ph);
+    photoMap.set(ph.propertyId, arr);
+  }
+
+  const facMap = new Map<string, string[]>();
+  for (const f of facs) {
+    const arr = facMap.get(f.propertyId) ?? [];
+    arr.push(f.type);
+    facMap.set(f.propertyId, arr);
+  }
+
+  return page.map((p) => ({
+    ...p,
+    photos: (photoMap.get(p.id) ?? []).sort(
+      (a, b) => a.displayOrder - b.displayOrder
+    ),
+    facilities: facMap.get(p.id) ?? [],
+  }));
+}
+
+/** Load a single property with its host, photos, and facilities */
 async function loadPropertyWithRelations(id: string) {
   const [property] = await db
     .select()
@@ -89,10 +126,6 @@ function getRouteParamId(id: string | string[] | undefined) {
 }
 
 function parsePagination(query: Record<string, unknown>) {
-  const hasLimit = query.limit !== undefined;
-  const hasOffset = query.offset !== undefined;
-  if (!hasLimit && !hasOffset) return null;
-
   const rawLimit = Number(query.limit);
   const rawOffset = Number(query.offset);
 
@@ -108,33 +141,26 @@ function parsePagination(query: Record<string, unknown>) {
 
 // ─── Routes ──────────────────────────────────────────────
 
-// GET /properties — public list
+// GET /properties — public list (ALWAYS paginated)
 router.get("/", async (req, res) => {
   try {
-    const pagination = parsePagination(req.query as Record<string, unknown>);
-    const limit = pagination?.limit ?? DEFAULT_PAGE_LIMIT;
-    const offset = pagination?.offset ?? 0;
+    const { limit, offset } = parsePagination(
+      req.query as Record<string, unknown>
+    );
 
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(properties);
-    const total = Number(count) || 0;
-    if (total === 0) {
-      return res.json({
-        success: true,
-        properties: [],
-        pagination: { limit, offset, total, hasMore: false, nextOffset: null },
-      });
-    }
+    // Run count + page query in parallel
+    const [countResult, page] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` }).from(properties),
+      db
+        .select()
+        .from(properties)
+        .orderBy(desc(properties.createdAt))
+        .limit(limit)
+        .offset(offset),
+    ]);
 
-    const page = pagination
-      ? await db
-          .select()
-          .from(properties)
-          .orderBy(desc(properties.createdAt))
-          .limit(limit)
-          .offset(offset)
-      : await db.select().from(properties).orderBy(desc(properties.createdAt));
+    const total = Number(countResult[0]?.count) || 0;
+
     if (page.length === 0) {
       return res.json({
         success: true,
@@ -143,23 +169,7 @@ router.get("/", async (req, res) => {
       });
     }
 
-    const ids = page.map((p) => p.id);
-    const [photos, facs] = await Promise.all([
-      db.select().from(propertyPhotos).where(inArray(propertyPhotos.propertyId, ids)),
-      db.select().from(facilities).where(inArray(facilities.propertyId, ids)),
-    ]);
-
-    const enriched = page.map((p) => ({
-      ...p,
-      photos: photos
-        .filter((ph) => ph.propertyId === p.id)
-        .sort((a, b) => a.displayOrder - b.displayOrder),
-      facilities: facs.filter((f) => f.propertyId === p.id).map((f) => f.type),
-    }));
-
-    if (!pagination) {
-      return res.json({ success: true, properties: enriched });
-    }
+    const enriched = await batchEnrich(page);
 
     const nextOffset = offset + enriched.length;
     const hasMore = nextOffset < total;
@@ -184,37 +194,28 @@ router.get("/", async (req, res) => {
 // GET /properties/me — host's own properties
 router.get("/me", syncUser, requireRole("host"), async (req, res) => {
   try {
-    const pagination = parsePagination(req.query as Record<string, unknown>);
-    const limit = pagination?.limit ?? DEFAULT_PAGE_LIMIT;
-    const offset = pagination?.offset ?? 0;
+    const { limit, offset } = parsePagination(
+      req.query as Record<string, unknown>
+    );
     const dbUser = (req as any).dbUser;
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(properties)
-      .where(eq(properties.hostId, dbUser.id));
 
-    const total = Number(count) || 0;
-    if (total === 0) {
-      return res.json({
-        success: true,
-        properties: [],
-        pagination: { limit, offset, total, hasMore: false, nextOffset: null },
-      });
-    }
+    // Run count + page in parallel
+    const [countResult, page] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(properties)
+        .where(eq(properties.hostId, dbUser.id)),
+      db
+        .select()
+        .from(properties)
+        .where(eq(properties.hostId, dbUser.id))
+        .orderBy(desc(properties.createdAt))
+        .limit(limit)
+        .offset(offset),
+    ]);
 
-    const page = pagination
-      ? await db
-          .select()
-          .from(properties)
-          .where(eq(properties.hostId, dbUser.id))
-          .orderBy(desc(properties.createdAt))
-          .limit(limit)
-          .offset(offset)
-      : await db
-          .select()
-          .from(properties)
-          .where(eq(properties.hostId, dbUser.id))
-          .orderBy(desc(properties.createdAt));
+    const total = Number(countResult[0]?.count) || 0;
+
     if (page.length === 0) {
       return res.json({
         success: true,
@@ -223,23 +224,7 @@ router.get("/me", syncUser, requireRole("host"), async (req, res) => {
       });
     }
 
-    const ids = page.map((p) => p.id);
-    const [photos, facs] = await Promise.all([
-      db.select().from(propertyPhotos).where(inArray(propertyPhotos.propertyId, ids)),
-      db.select().from(facilities).where(inArray(facilities.propertyId, ids)),
-    ]);
-
-    const enriched = page.map((p) => ({
-      ...p,
-      photos: photos
-        .filter((ph) => ph.propertyId === p.id)
-        .sort((a, b) => a.displayOrder - b.displayOrder),
-      facilities: facs.filter((f) => f.propertyId === p.id).map((f) => f.type),
-    }));
-
-    if (!pagination) {
-      return res.json({ success: true, properties: enriched });
-    }
+    const enriched = await batchEnrich(page);
 
     const nextOffset = offset + enriched.length;
     const hasMore = nextOffset < total;
@@ -312,25 +297,27 @@ router.post("/", syncUser, requireRole("host"), async (req, res) => {
       })
       .returning();
 
-    if (input.photos.length > 0) {
-      await db.insert(propertyPhotos).values(
-        input.photos.map((ph, idx) => ({
-          propertyId: created.id,
-          url: ph.url,
-          publicId: ph.publicId,
-          displayOrder: ph.displayOrder ?? idx,
-        }))
-      );
-    }
-
-    if (input.facilities.length > 0) {
-      await db.insert(facilities).values(
-        input.facilities.map((type) => ({
-          propertyId: created.id,
-          type,
-        }))
-      );
-    }
+    // Insert photos + facilities in parallel
+    await Promise.all([
+      input.photos.length > 0
+        ? db.insert(propertyPhotos).values(
+            input.photos.map((ph, idx) => ({
+              propertyId: created.id,
+              url: ph.url,
+              publicId: ph.publicId,
+              displayOrder: ph.displayOrder ?? idx,
+            }))
+          )
+        : Promise.resolve(),
+      input.facilities.length > 0
+        ? db.insert(facilities).values(
+            input.facilities.map((type) => ({
+              propertyId: created.id,
+              type,
+            }))
+          )
+        : Promise.resolve(),
+    ]);
 
     const full = await loadPropertyWithRelations(created.id);
     res.status(201).json({ success: true, property: full });
@@ -384,53 +371,69 @@ router.put("/:id", syncUser, requireRole("host"), async (req, res) => {
     if (input.gender !== undefined) scalarUpdates.gender = input.gender;
     if (input.isAvailable !== undefined) scalarUpdates.isAvailable = input.isAvailable;
 
+    // Run scalar update, photo replace, and facility replace in parallel where possible
+    const tasks: Promise<any>[] = [];
+
     if (Object.keys(scalarUpdates).length > 0) {
       scalarUpdates.updatedAt = new Date();
-      await db.update(properties).set(scalarUpdates).where(eq(properties.id, id));
+      tasks.push(
+        db.update(properties).set(scalarUpdates).where(eq(properties.id, id))
+      );
     }
 
     // Replace photos if provided
     if (input.photos !== undefined) {
-      const oldPhotos = await db
-        .select()
-        .from(propertyPhotos)
-        .where(eq(propertyPhotos.propertyId, id));
+      tasks.push(
+        (async () => {
+          const oldPhotos = await db
+            .select()
+            .from(propertyPhotos)
+            .where(eq(propertyPhotos.propertyId, id));
 
-      const oldPublicIds = oldPhotos
-        .map((p) => p.publicId)
-        .filter((pid): pid is string => !!pid);
+          const oldPublicIds = oldPhotos
+            .map((p) => p.publicId)
+            .filter((pid): pid is string => !!pid);
 
-      await db.delete(propertyPhotos).where(eq(propertyPhotos.propertyId, id));
+          await db.delete(propertyPhotos).where(eq(propertyPhotos.propertyId, id));
 
-      if (input.photos.length > 0) {
-        await db.insert(propertyPhotos).values(
-          input.photos.map((ph, idx) => ({
-            propertyId: id,
-            url: ph.url,
-            publicId: ph.publicId,
-            displayOrder: ph.displayOrder ?? idx,
-          }))
-        );
-      }
+          if (input.photos!.length > 0) {
+            await db.insert(propertyPhotos).values(
+              input.photos!.map((ph, idx) => ({
+                propertyId: id,
+                url: ph.url,
+                publicId: ph.publicId,
+                displayOrder: ph.displayOrder ?? idx,
+              }))
+            );
+          }
 
-      const keptPublicIds = new Set(input.photos.map((p) => p.publicId));
-      const toDelete = oldPublicIds.filter((pid) => !keptPublicIds.has(pid));
-      if (toDelete.length > 0) {
-        deleteImages(toDelete).catch((e) =>
-          console.error("Cloudinary cleanup failed:", e)
-        );
-      }
+          // Fire-and-forget Cloudinary cleanup
+          const keptPublicIds = new Set(input.photos!.map((p) => p.publicId));
+          const toDelete = oldPublicIds.filter((pid) => !keptPublicIds.has(pid));
+          if (toDelete.length > 0) {
+            deleteImages(toDelete).catch((e) =>
+              console.error("Cloudinary cleanup failed:", e)
+            );
+          }
+        })()
+      );
     }
 
     // Replace facilities if provided
     if (input.facilities !== undefined) {
-      await db.delete(facilities).where(eq(facilities.propertyId, id));
-      if (input.facilities.length > 0) {
-        await db.insert(facilities).values(
-          input.facilities.map((type) => ({ propertyId: id, type }))
-        );
-      }
+      tasks.push(
+        (async () => {
+          await db.delete(facilities).where(eq(facilities.propertyId, id));
+          if (input.facilities!.length > 0) {
+            await db.insert(facilities).values(
+              input.facilities!.map((type) => ({ propertyId: id, type }))
+            );
+          }
+        })()
+      );
     }
+
+    await Promise.all(tasks);
 
     const full = await loadPropertyWithRelations(id);
     res.json({ success: true, property: full });

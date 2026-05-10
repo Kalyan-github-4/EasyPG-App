@@ -63,9 +63,26 @@ async function enrichBookings(
   const propIds = Array.from(new Set(rows.map((r) => r.propertyId)));
   const guestIds = Array.from(new Set(rows.map((r) => r.guestId)));
 
+  // Only select needed columns instead of entire rows
   const [props, guests] = await Promise.all([
-    db.select().from(properties).where(inArray(properties.id, propIds)),
-    db.select().from(users).where(inArray(users.id, guestIds)),
+    db
+      .select({
+        id: properties.id,
+        name: properties.name,
+        location: properties.location,
+        rent: properties.rent,
+      })
+      .from(properties)
+      .where(inArray(properties.id, propIds)),
+    db
+      .select({
+        id: users.id,
+        name: users.name,
+        phone: users.phone,
+        avatarUrl: users.avatarUrl,
+      })
+      .from(users)
+      .where(inArray(users.id, guestIds)),
   ]);
 
   const propMap = new Map(props.map((p) => [p.id, p]));
@@ -116,11 +133,25 @@ router.post("/", syncUser, requireAuth, async (req, res) => {
 
     const { propertyId, note, visitDate } = parsed.data;
 
-    const [property] = await db
-      .select()
-      .from(properties)
-      .where(eq(properties.id, propertyId))
-      .limit(1);
+    // Check property existence + duplicate booking in parallel
+    const [[property], [existing]] = await Promise.all([
+      db
+        .select({ id: properties.id, hostId: properties.hostId })
+        .from(properties)
+        .where(eq(properties.id, propertyId))
+        .limit(1),
+      db
+        .select({ id: bookingRequests.id })
+        .from(bookingRequests)
+        .where(
+          and(
+            eq(bookingRequests.guestId, dbUser.id),
+            eq(bookingRequests.propertyId, propertyId),
+            eq(bookingRequests.status, "pending")
+          )
+        )
+        .limit(1),
+    ]);
 
     if (!property) {
       return res
@@ -134,19 +165,6 @@ router.post("/", syncUser, requireAuth, async (req, res) => {
         message: "You can't request to visit your own property",
       });
     }
-
-    // Block duplicate active requests for the same guest/property pair
-    const [existing] = await db
-      .select()
-      .from(bookingRequests)
-      .where(
-        and(
-          eq(bookingRequests.guestId, dbUser.id),
-          eq(bookingRequests.propertyId, propertyId),
-          eq(bookingRequests.status, "pending")
-        )
-      )
-      .limit(1);
 
     if (existing) {
       return res.status(409).json({
@@ -215,7 +233,7 @@ router.get("/host", syncUser, requireAuth, async (req, res) => {
         ? (req.query.propertyId as string)
         : null;
 
-    // Find properties owned by this host
+    // Only select IDs — no need for full property rows
     const myProps = await db
       .select({ id: properties.id })
       .from(properties)
@@ -252,7 +270,6 @@ router.get("/host", syncUser, requireAuth, async (req, res) => {
 router.patch("/:id/respond", syncUser, requireAuth, async (req, res) => {
   try {
     const dbUser = (req as any).dbUser;
-    const { id } = req.params;
 
     const parsed = respondSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -275,9 +292,9 @@ router.patch("/:id/respond", syncUser, requireAuth, async (req, res) => {
         .json({ success: false, message: "Booking not found" });
     }
 
-    // Verify host of the property
+    // Verify host of the property — only select needed columns
     const [property] = await db
-      .select()
+      .select({ id: properties.id, hostId: properties.hostId })
       .from(properties)
       .where(eq(properties.id, row.propertyId))
       .limit(1);
@@ -318,7 +335,6 @@ router.patch("/:id/respond", syncUser, requireAuth, async (req, res) => {
 router.delete("/:id", syncUser, requireAuth, async (req, res) => {
   try {
     const dbUser = (req as any).dbUser;
-    const { id } = req.params;
 
     const [row] = await db
       .select()

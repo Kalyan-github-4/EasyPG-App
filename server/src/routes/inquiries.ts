@@ -2,7 +2,7 @@ import express from "express";
 import { z } from "zod";
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { inquiries, inquiryMessages, properties, users } from "../db/schema/index.js";
+import { inquiries, inquiryMessages, properties, propertyPhotos, users } from "../db/schema/index.js";
 import { syncUser } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -67,9 +67,25 @@ async function enrichThreads(
     )
   );
 
+  // Only select needed columns + get cover photos with a subquery
   const [props, partyUsers, coverPhotos] = await Promise.all([
-    db.select().from(properties).where(inArray(properties.id, propIds)),
-    db.select().from(users).where(inArray(users.id, counterpartIds)),
+    db
+      .select({
+        id: properties.id,
+        name: properties.name,
+        location: properties.location,
+        rent: properties.rent,
+      })
+      .from(properties)
+      .where(inArray(properties.id, propIds)),
+    db
+      .select({
+        id: users.id,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+      })
+      .from(users)
+      .where(inArray(users.id, counterpartIds)),
     db.execute(sql`
       SELECT DISTINCT ON (property_id) property_id, url
       FROM property_photos
@@ -136,12 +152,24 @@ router.post("/", syncUser, requireAuth, async (req, res) => {
 
     const { propertyId, message } = parsed.data;
 
-    // Load property to get host
-    const [property] = await db
-      .select()
-      .from(properties)
-      .where(eq(properties.id, propertyId))
-      .limit(1);
+    // Load property + check existing thread in parallel
+    const [[property], [existing]] = await Promise.all([
+      db
+        .select({ id: properties.id, hostId: properties.hostId })
+        .from(properties)
+        .where(eq(properties.id, propertyId))
+        .limit(1),
+      db
+        .select()
+        .from(inquiries)
+        .where(
+          and(
+            eq(inquiries.guestId, dbUser.id),
+            eq(inquiries.propertyId, propertyId)
+          )
+        )
+        .limit(1),
+    ]);
 
     if (!property) {
       return res.status(404).json({ success: false, message: "Property not found" });
@@ -153,18 +181,6 @@ router.post("/", syncUser, requireAuth, async (req, res) => {
         message: "You can't message your own property",
       });
     }
-
-    // Reuse existing thread if one exists for (guest, property)
-    const [existing] = await db
-      .select()
-      .from(inquiries)
-      .where(
-        and(
-          eq(inquiries.guestId, dbUser.id),
-          eq(inquiries.propertyId, propertyId)
-        )
-      )
-      .limit(1);
 
     const now = new Date();
     let inquiryRow: typeof inquiries.$inferSelect;
@@ -187,24 +203,29 @@ router.post("/", syncUser, requireAuth, async (req, res) => {
       inquiryRow = created;
     }
 
-    // Insert the first message
-    await db.insert(inquiryMessages).values({
-      inquiryId: inquiryRow.id,
-      senderId: dbUser.id,
-      body: message.trim(),
-    });
+    // Insert message + update metadata in parallel (if reusing thread)
+    const tasks: Promise<any>[] = [
+      db.insert(inquiryMessages).values({
+        inquiryId: inquiryRow.id,
+        senderId: dbUser.id,
+        body: message.trim(),
+      }),
+    ];
 
-    // If reused thread, update metadata
     if (existing) {
-      await db
-        .update(inquiries)
-        .set({
-          lastMessageAt: now,
-          lastMessagePreview: previewOf(message),
-          hostUnread: sql`${inquiries.hostUnread} + 1`,
-        })
-        .where(eq(inquiries.id, inquiryRow.id));
+      tasks.push(
+        db
+          .update(inquiries)
+          .set({
+            lastMessageAt: now,
+            lastMessagePreview: previewOf(message),
+            hostUnread: sql`${inquiries.hostUnread} + 1`,
+          })
+          .where(eq(inquiries.id, inquiryRow.id))
+      );
     }
+
+    await Promise.all(tasks);
 
     const [refreshed] = await db
       .select()
@@ -253,7 +274,6 @@ router.get("/", syncUser, requireAuth, async (req, res) => {
 router.get("/:id", syncUser, requireAuth, async (req, res) => {
   try {
     const dbUser = (req as any).dbUser;
-    const { id } = req.params;
 
     const [row] = await db
       .select()
@@ -269,17 +289,19 @@ router.get("/:id", syncUser, requireAuth, async (req, res) => {
       return res.status(403).json({ success: false, message: "Not your inquiry" });
     }
 
-    const [enriched] = await enrichThreads([row], dbUser.id);
-
-    const messages = await db
-      .select()
-      .from(inquiryMessages)
-      .where(eq(inquiryMessages.inquiryId, req.params.id as string))
-      .orderBy(inquiryMessages.createdAt);
+    // Enrich thread + load messages in parallel
+    const [enrichedArr, messages] = await Promise.all([
+      enrichThreads([row], dbUser.id),
+      db
+        .select()
+        .from(inquiryMessages)
+        .where(eq(inquiryMessages.inquiryId, req.params.id as string))
+        .orderBy(inquiryMessages.createdAt),
+    ]);
 
     res.json({
       success: true,
-      thread: enriched,
+      thread: enrichedArr[0],
       messages,
     });
   } catch (err) {
@@ -292,7 +314,6 @@ router.get("/:id", syncUser, requireAuth, async (req, res) => {
 router.post("/:id/messages", syncUser, requireAuth, async (req, res) => {
   try {
     const dbUser = (req as any).dbUser;
-    const { id } = req.params;
 
     const parsed = sendMessageSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -317,31 +338,32 @@ router.post("/:id/messages", syncUser, requireAuth, async (req, res) => {
     }
 
     const body = parsed.data.body.trim();
-
-    const [message] = await db
-      .insert(inquiryMessages)
-      .values({
-        inquiryId: req.params.id as string,
-        senderId: dbUser.id,
-        body,
-      })
-      .returning();
-
-    // Update thread metadata
     const isGuestSender = dbUser.id === row.guestId;
-    await db
-      .update(inquiries)
-      .set({
-        lastMessageAt: new Date(),
-        lastMessagePreview: previewOf(body),
-        guestUnread: isGuestSender
-          ? row.guestUnread
-          : sql`${inquiries.guestUnread} + 1`,
-        hostUnread: isGuestSender
-          ? sql`${inquiries.hostUnread} + 1`
-          : row.hostUnread,
-      })
-      .where(eq(inquiries.id, req.params.id as string));
+
+    // Insert message + update thread metadata in parallel
+    const [[message]] = await Promise.all([
+      db
+        .insert(inquiryMessages)
+        .values({
+          inquiryId: req.params.id as string,
+          senderId: dbUser.id,
+          body,
+        })
+        .returning(),
+      db
+        .update(inquiries)
+        .set({
+          lastMessageAt: new Date(),
+          lastMessagePreview: previewOf(body),
+          guestUnread: isGuestSender
+            ? row.guestUnread
+            : sql`${inquiries.guestUnread} + 1`,
+          hostUnread: isGuestSender
+            ? sql`${inquiries.hostUnread} + 1`
+            : row.hostUnread,
+        })
+        .where(eq(inquiries.id, req.params.id as string)),
+    ]);
 
     res.status(201).json({ success: true, message });
   } catch (err) {
@@ -354,7 +376,6 @@ router.post("/:id/messages", syncUser, requireAuth, async (req, res) => {
 router.patch("/:id/read", syncUser, requireAuth, async (req, res) => {
   try {
     const dbUser = (req as any).dbUser;
-    const { id } = req.params;
 
     const [row] = await db
       .select()

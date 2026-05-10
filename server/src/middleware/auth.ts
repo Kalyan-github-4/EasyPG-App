@@ -4,6 +4,48 @@ import { db } from "../db/index.js";
 import { users } from "../db/schema/index.js";
 import { eq } from "drizzle-orm";
 
+// ─── In-Memory User Cache ────────────────────────────────
+// Avoids a DB round-trip on every single authenticated request.
+// TTL: 60s — short enough to pick up role changes quickly.
+
+interface CachedUser {
+  user: typeof users.$inferSelect;
+  expiresAt: number;
+}
+
+const USER_CACHE_TTL_MS = 60_000; // 1 minute
+const userCache = new Map<string, CachedUser>();
+
+// Prune stale entries every 5 minutes to prevent unbounded growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of userCache) {
+    if (entry.expiresAt < now) userCache.delete(key);
+  }
+}, 5 * 60_000).unref();
+
+function getCachedUser(clerkId: string) {
+  const entry = userCache.get(clerkId);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    userCache.delete(clerkId);
+    return null;
+  }
+  return entry.user;
+}
+
+function setCachedUser(clerkId: string, user: typeof users.$inferSelect) {
+  userCache.set(clerkId, {
+    user,
+    expiresAt: Date.now() + USER_CACHE_TTL_MS,
+  });
+}
+
+/** Clear cache for a specific user (call after role/profile updates) */
+export function invalidateUserCache(clerkId: string) {
+  userCache.delete(clerkId);
+}
+
 /**
  * Middleware: Sync Clerk user to our database.
  * After Clerk verifies the JWT, this finds or creates the user in our DB
@@ -17,7 +59,14 @@ export async function syncUser(req: Request, res: Response, next: NextFunction) 
       return next(); // Not authenticated — let requireAuth handle it
     }
 
-    // Check if user already exists in our DB
+    // 1. Check in-memory cache first (0ms)
+    const cached = getCachedUser(userId);
+    if (cached) {
+      (req as any).dbUser = cached;
+      return next();
+    }
+
+    // 2. Check DB
     const existing = await db
       .select()
       .from(users)
@@ -25,11 +74,12 @@ export async function syncUser(req: Request, res: Response, next: NextFunction) 
       .limit(1);
 
     if (existing.length > 0) {
+      setCachedUser(userId, existing[0]);
       (req as any).dbUser = existing[0];
       return next();
     }
 
-    // First-time user: fetch from Clerk and create in our DB
+    // 3. First-time user: fetch from Clerk and create in our DB
     const clerkUser = await clerkClient.users.getUser(userId);
 
     // Build name: prefer firstName + lastName from Clerk form,
@@ -53,6 +103,7 @@ export async function syncUser(req: Request, res: Response, next: NextFunction) 
       })
       .returning();
 
+    setCachedUser(userId, newUser);
     (req as any).dbUser = newUser;
     next();
   } catch (error) {

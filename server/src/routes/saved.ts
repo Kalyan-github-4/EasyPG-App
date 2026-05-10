@@ -57,6 +57,7 @@ router.get("/", syncUser, requireAuth, async (req, res) => {
 
     const ids = rows.map((r) => r.propertyId);
 
+    // Load all enrichment data in parallel
     const [props, photos, facs] = await Promise.all([
       db.select().from(properties).where(inArray(properties.id, ids)),
       db
@@ -69,7 +70,22 @@ router.get("/", syncUser, requireAuth, async (req, res) => {
         .where(inArray(facilities.propertyId, ids)),
     ]);
 
+    // Use Maps for O(1) lookups instead of O(n) filters
     const propMap = new Map(props.map((p) => [p.id, p]));
+
+    const photoMap = new Map<string, typeof photos>();
+    for (const ph of photos) {
+      const arr = photoMap.get(ph.propertyId) ?? [];
+      arr.push(ph);
+      photoMap.set(ph.propertyId, arr);
+    }
+
+    const facMap = new Map<string, string[]>();
+    for (const f of facs) {
+      const arr = facMap.get(f.propertyId) ?? [];
+      arr.push(f.type);
+      facMap.set(f.propertyId, arr);
+    }
 
     const enriched = rows
       .map((r) => {
@@ -78,12 +94,10 @@ router.get("/", syncUser, requireAuth, async (req, res) => {
 
         return {
           ...p,
-          photos: photos
-            .filter((ph) => ph.propertyId === p.id)
-            .sort((a, b) => a.displayOrder - b.displayOrder),
-          facilities: facs
-            .filter((f) => f.propertyId === p.id)
-            .map((f) => f.type),
+          photos: (photoMap.get(p.id) ?? []).sort(
+            (a, b) => a.displayOrder - b.displayOrder
+          ),
+          facilities: facMap.get(p.id) ?? [],
         };
       })
       .filter((x) => x !== null);
@@ -133,11 +147,24 @@ router.post(
       // ✅ Validate param
       const { propertyId } = propertyParamSchema.parse(req.params);
 
-      const [property] = await db
-        .select({ id: properties.id })
-        .from(properties)
-        .where(eq(properties.id, propertyId))
-        .limit(1);
+      // Check property existence + existing save in parallel
+      const [[property], [existing]] = await Promise.all([
+        db
+          .select({ id: properties.id })
+          .from(properties)
+          .where(eq(properties.id, propertyId))
+          .limit(1),
+        db
+          .select({ id: savedListings.id })
+          .from(savedListings)
+          .where(
+            and(
+              eq(savedListings.guestId, dbUser.id),
+              eq(savedListings.propertyId, propertyId)
+            )
+          )
+          .limit(1),
+      ]);
 
       if (!property) {
         return res.status(404).json({
@@ -145,17 +172,6 @@ router.post(
           message: "Property not found",
         });
       }
-
-      const [existing] = await db
-        .select()
-        .from(savedListings)
-        .where(
-          and(
-            eq(savedListings.guestId, dbUser.id),
-            eq(savedListings.propertyId, propertyId)
-          )
-        )
-        .limit(1);
 
       if (existing) {
         return res.json({ success: true, saved: true });

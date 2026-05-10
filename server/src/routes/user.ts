@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { requireAuth } from "@clerk/express";
-import { syncUser } from "../middleware/auth.js";
+import { syncUser, invalidateUserCache } from "../middleware/auth.js";
 import { db } from "../db/index.js";
 import { users } from "../db/schema/index.js";
 import { eq } from "drizzle-orm";
@@ -53,6 +53,9 @@ userRouter.put(
       .where(eq(users.id, dbUser.id))
       .returning();
 
+    // Clear cached user so next request picks up new role immediately
+    invalidateUserCache(dbUser.clerkId);
+
     res.json({ success: true, user: updated });
   }
 );
@@ -79,6 +82,9 @@ userRouter.put(
       .set(updateData)
       .where(eq(users.id, dbUser.id))
       .returning();
+
+    // Clear cached user so next request sees updated profile
+    invalidateUserCache(dbUser.clerkId);
 
     res.json({ success: true, user: updated });
   }
