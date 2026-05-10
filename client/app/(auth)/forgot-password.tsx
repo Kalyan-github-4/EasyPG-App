@@ -9,14 +9,32 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
+  Keyboard,
+  StyleSheet,
 } from "react-native";
 import { useSignIn } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type Stage = "email" | "otp" | "reset";
+
+const BRAND = "#2563EB";
+const BRAND_LIGHT = "#EFF6FF";
+const TEXT_PRIMARY = "#111827";
+const TEXT_SECONDARY = "#6B7280";
+const TEXT_MUTED = "#9CA3AF";
+const BG = "#FFFFFF";
+const INPUT_BG = "#F9FAFB";
+const INPUT_BORDER = "#E5E7EB";
+const INPUT_FOCUS = "#2563EB";
+const ERROR_BG = "#FEF2F2";
+const ERROR_BORDER = "#FECACA";
+const ERROR_TEXT = "#DC2626";
+const SUCCESS = "#10B981";
+const SUCCESS_BG = "#F0FDF4";
+const INFO_BG = "#EFF6FF";
+const INFO_BORDER = "#BFDBFE";
 
 export default function ForgotPasswordScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -32,13 +50,16 @@ export default function ForgotPasswordScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  // Refs for OTP inputs
+  const scrollRef = useRef<ScrollView>(null);
   const otpRefs = useRef<(TextInput | null)[]>([]);
+  const confirmRef = useRef<TextInput>(null);
 
   // ─── Stage 1: Request reset code ─────────────────
 
   const handleSendCode = useCallback(async () => {
+    Keyboard.dismiss();
     if (!isLoaded) return;
     if (!email.trim()) {
       setError("Please enter your email");
@@ -73,7 +94,6 @@ export default function ForgotPasswordScreen() {
       setError("Please enter the complete 6-digit code");
       return;
     }
-    // Move to stage 3 — actual verification happens when they set the password
     setError("");
     setInfo("");
     setStage("reset");
@@ -82,6 +102,7 @@ export default function ForgotPasswordScreen() {
   // ─── Stage 3: Set new password ────────────────────
 
   const handleReset = useCallback(async () => {
+    Keyboard.dismiss();
     if (!isLoaded) return;
     const code = otp.join("");
     if (!code.trim() || !password.trim()) {
@@ -116,7 +137,6 @@ export default function ForgotPasswordScreen() {
         err.errors?.[0]?.message ||
         "Couldn't reset password. Check your code and try again.";
       setError(message);
-      // If code was wrong, go back to OTP stage
       if (
         err.errors?.[0]?.code === "form_code_incorrect" ||
         message.toLowerCase().includes("code")
@@ -156,7 +176,6 @@ export default function ForgotPasswordScreen() {
     const newOtp = [...otp];
 
     if (digit.length > 1) {
-      // Handle paste of full OTP
       const digits = digit.slice(0, 6).split("");
       digits.forEach((d, i) => {
         if (i < 6) newOtp[i] = d;
@@ -202,215 +221,128 @@ export default function ForgotPasswordScreen() {
   const stages: Stage[] = ["email", "otp", "reset"];
   const currentStepIndex = stages.indexOf(stage);
 
-  const stageLabels = {
-    email: { title: "Forgot password?", subtitle: "Enter your email and we'll send you a reset code." },
-    otp: { title: "Verify your email", subtitle: `Enter the 6-digit code sent to ${email}` },
-    reset: { title: "Create new password", subtitle: "Your identity is verified. Set a new password." },
+  const stageConfig = {
+    email: {
+      title: "Forgot password?",
+      subtitle: "Enter your email and we'll send you a reset code.",
+      icon: "mail-outline" as const,
+    },
+    otp: {
+      title: "Verify your email",
+      subtitle: `Enter the 6-digit code sent to ${email}`,
+      icon: "shield-checkmark-outline" as const,
+    },
+    reset: {
+      title: "Create new password",
+      subtitle: "Your identity is verified. Set a new password.",
+      icon: "key-outline" as const,
+    },
   };
 
   // ─── UI ──────────────────────────────────────────
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
-      <LinearGradient
-        colors={["#0B1F47", "#1A3A7A", "#2563EB"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={{ borderBottomLeftRadius: 36, borderBottomRightRadius: 36 }}
-      >
-        <SafeAreaView edges={["top"]}>
-          <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32 }}>
-            <TouchableOpacity
-              onPress={handleBack}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: "rgba(255,255,255,0.15)",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 16,
-              }}
-            >
-              <Ionicons name="arrow-back" size={20} color="#fff" />
-            </TouchableOpacity>
-
-            {/* Logo */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 14,
-                  backgroundColor: "rgba(255,255,255,0.15)",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+    <View style={s.root}>
+      <SafeAreaView edges={["top"]} style={s.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={s.flex}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          <ScrollView
+            ref={scrollRef}
+            contentContainerStyle={s.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {/* ── Top Bar ─────────────────────────────── */}
+            <View style={s.topBar}>
+              <TouchableOpacity
+                onPress={handleBack}
+                activeOpacity={0.6}
+                style={s.backButton}
               >
-                <Image
-                  source={require("../../assets/images/icon.png")}
-                  style={{ width: 30, height: 30 }}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={{ fontSize: 18, fontWeight: "800", color: "#fff" }}>EasyPG</Text>
+                <Ionicons name="arrow-back" size={20} color={TEXT_PRIMARY} />
+              </TouchableOpacity>
+
+              <Image
+                source={require("../../assets/images/logo.png")}
+                style={s.topLogo}
+                resizeMode="contain"
+              />
+
+              {/* Spacer for alignment */}
+              <View style={{ width: 40 }} />
             </View>
 
-            <Text
-              style={{
-                fontSize: 26,
-                fontWeight: "900",
-                color: "#fff",
-                letterSpacing: -0.3,
-              }}
-            >
-              {stageLabels[stage].title}
-            </Text>
-            <Text
-              style={{
-                marginTop: 8,
-                fontSize: 14,
-                fontWeight: "500",
-                color: "rgba(191, 219, 254, 0.9)",
-                lineHeight: 20,
-              }}
-            >
-              {stageLabels[stage].subtitle}
-            </Text>
-
-            {/* Step Indicator */}
-            <View
-              style={{
-                flexDirection: "row",
-                gap: 8,
-                marginTop: 20,
-              }}
-            >
-              {stages.map((s, i) => (
+            {/* ── Step Progress ────────────────────────── */}
+            <View style={s.progressRow}>
+              {stages.map((stg, i) => (
                 <View
-                  key={s}
-                  style={{
-                    flex: 1,
-                    height: 4,
-                    borderRadius: 2,
-                    backgroundColor:
-                      i <= currentStepIndex
-                        ? "#FFFFFF"
-                        : "rgba(255,255,255,0.2)",
-                  }}
+                  key={stg}
+                  style={[
+                    s.progressDot,
+                    i <= currentStepIndex ? s.progressDotActive : s.progressDotInactive,
+                    i < stages.length - 1 ? { marginRight: 8 } : {},
+                  ]}
                 />
               ))}
             </View>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View
-            style={{
-              flex: 1,
-              padding: 24,
-              marginHorizontal: 20,
-              marginTop: -16,
-              backgroundColor: "#FFFFFF",
-              borderRadius: 24,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.08,
-              shadowRadius: 24,
-              elevation: 8,
-            }}
-          >
-            {/* Error */}
+            {/* ── Stage Icon + Title ──────────────────── */}
+            <View style={s.stageHeader}>
+              <View style={s.stageIconCircle}>
+                <Ionicons name={stageConfig[stage].icon} size={24} color={BRAND} />
+              </View>
+              <Text style={s.heading}>{stageConfig[stage].title}</Text>
+              <Text style={s.subheading}>{stageConfig[stage].subtitle}</Text>
+            </View>
+
+            {/* ── Error / Info ─────────────────────────── */}
             {error ? (
-              <View
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  marginBottom: 16,
-                  backgroundColor: "#FEF2F2",
-                  borderWidth: 1,
-                  borderColor: "#FEE2E2",
-                  borderRadius: 14,
-                }}
-              >
-                <Text style={{ fontSize: 13, textAlign: "center", color: "#EF4444" }}>
-                  {error}
-                </Text>
+              <View style={s.errorBox}>
+                <Ionicons name="alert-circle" size={16} color={ERROR_TEXT} />
+                <Text style={s.errorText}>{error}</Text>
               </View>
             ) : null}
 
-            {/* Info */}
             {info ? (
-              <View
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  marginBottom: 16,
-                  backgroundColor: "#EFF6FF",
-                  borderWidth: 1,
-                  borderColor: "#BFDBFE",
-                  borderRadius: 14,
-                }}
-              >
-                <Text style={{ fontSize: 13, textAlign: "center", color: "#2563EB" }}>
-                  {info}
-                </Text>
+              <View style={s.infoBox}>
+                <Ionicons name="information-circle" size={16} color={BRAND} />
+                <Text style={s.infoText}>{info}</Text>
               </View>
             ) : null}
 
             {/* ═══════ STAGE 1: EMAIL ═══════ */}
             {stage === "email" && (
               <>
-                <View style={{ marginBottom: 24 }}>
-                  <Text
-                    style={{
-                      marginBottom: 8,
-                      marginLeft: 2,
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: "#64748B",
-                      textTransform: "uppercase",
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    Email Address
-                  </Text>
+                <View style={s.fieldGroup}>
+                  <Text style={s.label}>Email Address</Text>
                   <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      paddingHorizontal: 16,
-                      backgroundColor: "#F8FAFC",
-                      borderRadius: 14,
-                      borderWidth: 1.5,
-                      borderColor: "#E2E8F0",
-                    }}
+                    style={[
+                      s.inputRow,
+                      focusedField === "email" && s.inputRowFocused,
+                    ]}
                   >
-                    <Ionicons name="mail-outline" size={18} color="#94A3B8" />
+                    <Ionicons
+                      name="mail-outline"
+                      size={18}
+                      color={focusedField === "email" ? BRAND : TEXT_MUTED}
+                    />
                     <TextInput
-                      style={{
-                        flex: 1,
-                        fontSize: 15,
-                        color: "#0F172A",
-                        paddingVertical: 14,
-                        paddingLeft: 12,
-                      }}
+                      style={s.input}
                       placeholder="your@email.com"
-                      placeholderTextColor="#CBD5E1"
+                      placeholderTextColor={TEXT_MUTED}
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
+                      returnKeyType="done"
                       value={email}
-                      onChangeText={setEmail}
+                      onChangeText={(t) => { setEmail(t); setError(""); }}
+                      onFocus={() => setFocusedField("email")}
+                      onBlur={() => setFocusedField(null)}
+                      onSubmitEditing={handleSendCode}
                       editable={!isSubmitting}
                     />
                   </View>
@@ -420,47 +352,19 @@ export default function ForgotPasswordScreen() {
                   onPress={handleSendCode}
                   disabled={isSubmitting}
                   activeOpacity={0.85}
+                  style={[s.primaryBtn, isSubmitting && s.primaryBtnDisabled]}
                 >
-                  <LinearGradient
-                    colors={["#0B3D91", "#2563EB"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={{
-                      borderRadius: 14,
-                      paddingVertical: 16,
-                      alignItems: "center",
-                      shadowColor: "#2563EB",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 8,
-                      elevation: 4,
-                    }}
-                  >
-                    {isSubmitting ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff" }}>
-                        Send Reset Code
-                      </Text>
-                    )}
-                  </LinearGradient>
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={s.primaryBtnText}>Send Reset Code</Text>
+                  )}
                 </TouchableOpacity>
 
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "center",
-                    gap: 4,
-                    marginTop: 22,
-                  }}
-                >
-                  <Text style={{ fontSize: 14, color: "#94A3B8" }}>
-                    Remembered it?
-                  </Text>
-                  <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={{ fontSize: 14, fontWeight: "800", color: "#2563EB" }}>
-                      Sign In
-                    </Text>
+                <View style={s.switchRow}>
+                  <Text style={s.switchText}>Remembered it?</Text>
+                  <TouchableOpacity onPress={() => router.back()} activeOpacity={0.6}>
+                    <Text style={s.switchLink}> Sign In</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -469,51 +373,16 @@ export default function ForgotPasswordScreen() {
             {/* ═══════ STAGE 2: OTP VERIFICATION ═══════ */}
             {stage === "otp" && (
               <>
-                {/* OTP Badge */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    alignSelf: "center",
-                    gap: 8,
-                    backgroundColor: "#EFF6FF",
-                    paddingHorizontal: 14,
-                    paddingVertical: 8,
-                    borderRadius: 20,
-                    marginBottom: 24,
-                  }}
-                >
-                  <Ionicons name="shield-checkmark" size={16} color="#2563EB" />
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#2563EB" }}>
-                    Verification Step
-                  </Text>
-                </View>
-
                 {/* OTP Input Boxes */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "center",
-                    gap: 10,
-                    marginBottom: 24,
-                  }}
-                >
+                <View style={s.otpRow}>
                   {otp.map((digit, index) => (
                     <TextInput
                       key={index}
                       ref={(ref) => { otpRefs.current[index] = ref; }}
-                      style={{
-                        width: 48,
-                        height: 56,
-                        borderRadius: 14,
-                        backgroundColor: digit ? "#EFF6FF" : "#F8FAFC",
-                        borderWidth: 2,
-                        borderColor: digit ? "#2563EB" : "#E2E8F0",
-                        textAlign: "center",
-                        fontSize: 22,
-                        fontWeight: "800",
-                        color: "#0F172A",
-                      }}
+                      style={[
+                        s.otpBox,
+                        digit ? s.otpBoxFilled : {},
+                      ]}
                       keyboardType="number-pad"
                       maxLength={index === 0 ? 6 : 1}
                       value={digit}
@@ -532,55 +401,23 @@ export default function ForgotPasswordScreen() {
                   onPress={handleVerifyOtp}
                   disabled={isSubmitting || otp.join("").length !== 6}
                   activeOpacity={0.85}
+                  style={[
+                    s.primaryBtn,
+                    (isSubmitting || otp.join("").length !== 6) && s.primaryBtnDisabled,
+                  ]}
                 >
-                  <LinearGradient
-                    colors={
-                      otp.join("").length === 6
-                        ? ["#0B3D91", "#2563EB"]
-                        : ["#CBD5E1", "#CBD5E1"]
-                    }
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={{
-                      borderRadius: 14,
-                      paddingVertical: 16,
-                      alignItems: "center",
-                      shadowColor: otp.join("").length === 6 ? "#2563EB" : "transparent",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 8,
-                      elevation: otp.join("").length === 6 ? 4 : 0,
-                    }}
-                  >
-                    {isSubmitting ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                        <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff" }}>
-                          Verify Code
-                        </Text>
-                      </View>
-                    )}
-                  </LinearGradient>
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={s.primaryBtnText}>Verify Code</Text>
+                  )}
                 </TouchableOpacity>
 
                 {/* Resend */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "center",
-                    gap: 4,
-                    marginTop: 22,
-                  }}
-                >
-                  <Text style={{ fontSize: 14, color: "#94A3B8" }}>
-                    Didn&apos;t get the code?
-                  </Text>
-                  <TouchableOpacity onPress={handleResend} disabled={isSubmitting}>
-                    <Text style={{ fontSize: 14, fontWeight: "800", color: "#2563EB" }}>
-                      Resend
-                    </Text>
+                <View style={s.switchRow}>
+                  <Text style={s.switchText}>Didn&apos;t get the code?</Text>
+                  <TouchableOpacity onPress={handleResend} disabled={isSubmitting} activeOpacity={0.6}>
+                    <Text style={s.switchLink}> Resend</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -590,101 +427,67 @@ export default function ForgotPasswordScreen() {
             {stage === "reset" && (
               <>
                 {/* Verified Badge */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    alignSelf: "center",
-                    gap: 8,
-                    backgroundColor: "#F0FDF4",
-                    paddingHorizontal: 14,
-                    paddingVertical: 8,
-                    borderRadius: 20,
-                    marginBottom: 24,
-                  }}
-                >
-                  <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#10B981" }}>
-                    Email Verified
-                  </Text>
+                <View style={s.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color={SUCCESS} />
+                  <Text style={s.verifiedText}>Email Verified</Text>
                 </View>
 
                 {/* New Password */}
-                <View style={{ marginBottom: 16 }}>
-                  <Text
-                    style={{
-                      marginBottom: 8,
-                      marginLeft: 2,
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: "#64748B",
-                      textTransform: "uppercase",
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    New Password
-                  </Text>
+                <View style={s.fieldGroup}>
+                  <Text style={s.label}>New Password</Text>
                   <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      paddingHorizontal: 16,
-                      backgroundColor: "#F8FAFC",
-                      borderRadius: 14,
-                      borderWidth: 1.5,
-                      borderColor: "#E2E8F0",
-                    }}
+                    style={[
+                      s.inputRow,
+                      focusedField === "password" && s.inputRowFocused,
+                    ]}
                   >
-                    <Ionicons name="lock-closed-outline" size={18} color="#94A3B8" />
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={18}
+                      color={focusedField === "password" ? BRAND : TEXT_MUTED}
+                    />
                     <TextInput
-                      style={{
-                        flex: 1,
-                        fontSize: 15,
-                        color: "#0F172A",
-                        paddingVertical: 14,
-                        paddingLeft: 12,
-                      }}
+                      style={s.input}
                       placeholder="At least 8 characters"
-                      placeholderTextColor="#CBD5E1"
+                      placeholderTextColor={TEXT_MUTED}
                       secureTextEntry={!showPassword}
+                      returnKeyType="next"
                       value={password}
-                      onChangeText={setPassword}
+                      onChangeText={(t) => { setPassword(t); setError(""); }}
+                      onFocus={() => {
+                        setFocusedField("password");
+                        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+                      }}
+                      onBlur={() => setFocusedField(null)}
+                      onSubmitEditing={() => confirmRef.current?.focus()}
                       editable={!isSubmitting}
                       autoFocus
                     />
                     <TouchableOpacity
                       onPress={() => setShowPassword(!showPassword)}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      activeOpacity={0.6}
                     >
                       <Ionicons
                         name={showPassword ? "eye-off-outline" : "eye-outline"}
-                        size={18}
-                        color="#94A3B8"
+                        size={20}
+                        color={focusedField === "password" ? BRAND : TEXT_MUTED}
                       />
                     </TouchableOpacity>
                   </View>
-                  {/* Password strength hint */}
+                  {/* Strength hint */}
                   {password.length > 0 && (
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 6,
-                        marginTop: 8,
-                        marginLeft: 2,
-                      }}
-                    >
+                    <View style={s.hintRow}>
                       <Ionicons
                         name={password.length >= 8 ? "checkmark-circle" : "close-circle"}
                         size={14}
-                        color={password.length >= 8 ? "#10B981" : "#EF4444"}
+                        color={password.length >= 8 ? SUCCESS : ERROR_TEXT}
                       />
                       <Text
-                        style={{
-                          fontSize: 11,
-                          color: password.length >= 8 ? "#10B981" : "#EF4444",
-                          fontWeight: "600",
-                        }}
+                        style={[
+                          s.hintText,
+                          { color: password.length >= 8 ? SUCCESS : ERROR_TEXT },
+                        ]}
                       >
                         {password.length >= 8
                           ? "Password is strong enough"
@@ -695,66 +498,47 @@ export default function ForgotPasswordScreen() {
                 </View>
 
                 {/* Confirm Password */}
-                <View style={{ marginBottom: 24 }}>
-                  <Text
-                    style={{
-                      marginBottom: 8,
-                      marginLeft: 2,
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: "#64748B",
-                      textTransform: "uppercase",
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    Confirm Password
-                  </Text>
+                <View style={s.fieldGroup}>
+                  <Text style={s.label}>Confirm Password</Text>
                   <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      paddingHorizontal: 16,
-                      backgroundColor: "#F8FAFC",
-                      borderRadius: 14,
-                      borderWidth: 1.5,
-                      borderColor:
-                        confirmPassword.length > 0 && password !== confirmPassword
-                          ? "#FCA5A5"
-                          : "#E2E8F0",
-                    }}
+                    style={[
+                      s.inputRow,
+                      focusedField === "confirm" && s.inputRowFocused,
+                      confirmPassword.length > 0 && password !== confirmPassword
+                        ? { borderColor: ERROR_BORDER }
+                        : {},
+                    ]}
                   >
-                    <Ionicons name="lock-closed-outline" size={18} color="#94A3B8" />
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={18}
+                      color={focusedField === "confirm" ? BRAND : TEXT_MUTED}
+                    />
                     <TextInput
-                      style={{
-                        flex: 1,
-                        fontSize: 15,
-                        color: "#0F172A",
-                        paddingVertical: 14,
-                        paddingLeft: 12,
-                      }}
+                      ref={confirmRef}
+                      style={s.input}
                       placeholder="Re-enter new password"
-                      placeholderTextColor="#CBD5E1"
+                      placeholderTextColor={TEXT_MUTED}
                       secureTextEntry={!showPassword}
+                      returnKeyType="done"
                       value={confirmPassword}
-                      onChangeText={setConfirmPassword}
+                      onChangeText={(t) => { setConfirmPassword(t); setError(""); }}
+                      onFocus={() => {
+                        setFocusedField("confirm");
+                        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+                      }}
+                      onBlur={() => setFocusedField(null)}
+                      onSubmitEditing={handleReset}
                       editable={!isSubmitting}
                     />
                     {confirmPassword.length > 0 && password === confirmPassword && (
-                      <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                      <Ionicons name="checkmark-circle" size={18} color={SUCCESS} />
                     )}
                   </View>
                   {confirmPassword.length > 0 && password !== confirmPassword && (
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 6,
-                        marginTop: 8,
-                        marginLeft: 2,
-                      }}
-                    >
-                      <Ionicons name="close-circle" size={14} color="#EF4444" />
-                      <Text style={{ fontSize: 11, color: "#EF4444", fontWeight: "600" }}>
+                    <View style={s.hintRow}>
+                      <Ionicons name="close-circle" size={14} color={ERROR_TEXT} />
+                      <Text style={[s.hintText, { color: ERROR_TEXT }]}>
                         Passwords don't match
                       </Text>
                     </View>
@@ -766,41 +550,269 @@ export default function ForgotPasswordScreen() {
                   onPress={handleReset}
                   disabled={isSubmitting}
                   activeOpacity={0.85}
+                  style={[s.primaryBtn, isSubmitting && s.primaryBtnDisabled]}
                 >
-                  <LinearGradient
-                    colors={["#0B3D91", "#2563EB"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={{
-                      borderRadius: 14,
-                      paddingVertical: 16,
-                      alignItems: "center",
-                      shadowColor: "#2563EB",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 8,
-                      elevation: 4,
-                    }}
-                  >
-                    {isSubmitting ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        <Ionicons name="key" size={18} color="#fff" />
-                        <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff" }}>
-                          Reset Password
-                        </Text>
-                      </View>
-                    )}
-                  </LinearGradient>
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={s.primaryBtnText}>Reset Password</Text>
+                  )}
                 </TouchableOpacity>
               </>
             )}
-          </View>
-
-          <View style={{ height: 32 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </View>
   );
 }
+
+// ─── Styles ───────────────────────────────────────────────
+
+const s = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  flex: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+
+  /* Top Bar */
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: INPUT_BG,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: INPUT_BORDER,
+  },
+  topLogo: {
+    width: 36,
+    height: 36,
+  },
+
+  /* Progress */
+  progressRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  progressDot: {
+    flex: 1,
+    height: 3,
+    borderRadius: 1.5,
+  },
+  progressDotActive: {
+    backgroundColor: BRAND,
+  },
+  progressDotInactive: {
+    backgroundColor: INPUT_BORDER,
+  },
+
+  /* Stage Header */
+  stageHeader: {
+    alignItems: "center",
+    marginBottom: 28,
+  },
+  stageIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: BRAND_LIGHT,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: TEXT_PRIMARY,
+    letterSpacing: -0.3,
+    textAlign: "center",
+  },
+  subheading: {
+    fontSize: 14,
+    color: TEXT_SECONDARY,
+    marginTop: 6,
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 8,
+  },
+
+  /* Error / Info */
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+    backgroundColor: ERROR_BG,
+    borderWidth: 1,
+    borderColor: ERROR_BORDER,
+    borderRadius: 12,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    color: ERROR_TEXT,
+    lineHeight: 18,
+  },
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+    backgroundColor: INFO_BG,
+    borderWidth: 1,
+    borderColor: INFO_BORDER,
+    borderRadius: 12,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: BRAND,
+    lineHeight: 18,
+  },
+
+  /* Fields */
+  fieldGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: TEXT_PRIMARY,
+    marginBottom: 6,
+    marginLeft: 2,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: INPUT_BG,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: INPUT_BORDER,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  inputRowFocused: {
+    borderColor: INPUT_FOCUS,
+    backgroundColor: BRAND_LIGHT,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: TEXT_PRIMARY,
+    paddingVertical: 14,
+  },
+
+  /* Hints */
+  hintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    marginLeft: 2,
+  },
+  hintText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  /* OTP */
+  otpRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
+    marginBottom: 28,
+  },
+  otpBox: {
+    width: 48,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: INPUT_BG,
+    borderWidth: 2,
+    borderColor: INPUT_BORDER,
+    textAlign: "center",
+    fontSize: 22,
+    fontWeight: "700",
+    color: TEXT_PRIMARY,
+  },
+  otpBoxFilled: {
+    backgroundColor: BRAND_LIGHT,
+    borderColor: BRAND,
+  },
+
+  /* Primary Button */
+  primaryBtn: {
+    backgroundColor: BRAND,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  primaryBtnDisabled: {
+    opacity: 0.5,
+  },
+  primaryBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+
+  /* Switch Row */
+  switchRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 24,
+  },
+  switchText: {
+    fontSize: 14,
+    color: TEXT_SECONDARY,
+  },
+  switchLink: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: BRAND,
+  },
+
+  /* Verified Badge */
+  verifiedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    gap: 6,
+    backgroundColor: SUCCESS_BG,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 24,
+  },
+  verifiedText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: SUCCESS,
+  },
+});

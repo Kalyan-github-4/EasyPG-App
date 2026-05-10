@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -8,15 +8,30 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Image,
+  Keyboard,
+  StyleSheet,
 } from "react-native";
 import { useSignUp, useSSO } from "@clerk/clerk-expo";
 import { useRouter, Link } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 
 WebBrowser.maybeCompleteAuthSession();
+
+const BRAND = "#2563EB";
+const BRAND_LIGHT = "#EFF6FF";
+const TEXT_PRIMARY = "#111827";
+const TEXT_SECONDARY = "#6B7280";
+const TEXT_MUTED = "#9CA3AF";
+const BG = "#FFFFFF";
+const INPUT_BG = "#F9FAFB";
+const INPUT_BORDER = "#E5E7EB";
+const INPUT_FOCUS = "#2563EB";
+const ERROR_BG = "#FEF2F2";
+const ERROR_BORDER = "#FECACA";
+const ERROR_TEXT = "#DC2626";
 
 export default function SignUpScreen() {
   const { signUp, setActive, isLoaded } = useSignUp();
@@ -33,9 +48,18 @@ export default function SignUpScreen() {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
 
+  // Focus tracking
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  const scrollRef = useRef<ScrollView>(null);
+  const lastNameRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+
   // ─── Sign Up ──────────────────────────────────────────
 
   const handleSignUp = useCallback(async () => {
+    Keyboard.dismiss();
     if (!isLoaded) return;
     if (!email.trim() || !password.trim()) {
       setError("Please fill in all required fields");
@@ -66,6 +90,7 @@ export default function SignUpScreen() {
   // ─── Verify OTP ───────────────────────────────────────
 
   const handleVerify = useCallback(async () => {
+    Keyboard.dismiss();
     if (!isLoaded) return;
     setIsSubmitting(true);
     setError("");
@@ -156,88 +181,92 @@ export default function SignUpScreen() {
 
   if (pendingVerification) {
     return (
-      <View className="flex-1 bg-brand-surface">
-        <LinearGradient
-          colors={["#2563EB", "#3B82F6"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ borderBottomLeftRadius: 40, borderBottomRightRadius: 40 }}
-        >
-          <SafeAreaView edges={["top"]}>
-            <View className="px-6 pt-4 pb-10 items-center">
-              <View className="w-16 h-16 rounded-2xl bg-white/20 items-center justify-center mb-4">
-                <Ionicons name="mail" size={32} color="#fff" />
-              </View>
-              <Text className="text-2xl font-extrabold text-white tracking-tight">
-                Check your email
-              </Text>
-              <Text className="text-blue-100 text-sm font-medium mt-1 text-center">
-                We sent a 6-digit code to{"\n"}
-                <Text className="text-white font-bold">{email}</Text>
-              </Text>
-            </View>
-          </SafeAreaView>
-        </LinearGradient>
-
-        <View className="mx-5 -mt-5 bg-white rounded-3xl p-6">
-          {error ? (
-            <View className="bg-red-50 rounded-xl px-4 py-3 mb-4 border border-red-100">
-              <Text className="text-red-500 text-sm text-center">{error}</Text>
-            </View>
-          ) : null}
-
-          <Text className="text-xs font-semibold text-brand-on-surface-muted uppercase tracking-wide mb-2 ml-1">
-            Verification Code
-          </Text>
-          <TextInput
-            className="bg-brand-surface-low rounded-xl text-center text-3xl font-bold text-brand-on-surface py-4 mb-6 tracking-widest"
-            placeholder="000000"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="number-pad"
-            maxLength={6}
-            value={verificationCode}
-            onChangeText={setVerificationCode}
-            editable={!isSubmitting}
-          />
-
-          <TouchableOpacity
-            onPress={handleVerify}
-            disabled={isSubmitting || verificationCode.length < 6}
-            activeOpacity={0.85}
+      <View style={s.root}>
+        <SafeAreaView edges={["top"]} style={s.safeArea}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={s.flex}
           >
-            <LinearGradient
-              colors={
-                verificationCode.length === 6
-                  ? ["#004ac6", "#2563eb"]
-                  : ["#e5e7eb", "#e5e7eb"]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{ borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
+            <ScrollView
+              contentContainerStyle={s.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              bounces={false}
             >
-              {isSubmitting ? (
-                <ActivityIndicator color={verificationCode.length === 6 ? "#fff" : "#9CA3AF"} />
-              ) : (
-                <Text
-                  className={`text-base font-bold ${
-                    verificationCode.length === 6 ? "text-white" : "text-brand-outline"
-                  }`}
-                >
-                  Verify Email
-                </Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+              {/* Logo */}
+              <View style={s.logoSection}>
+                <Image
+                  source={require("../../assets/images/logo.png")}
+                  style={s.logo}
+                  resizeMode="contain"
+                />
+              </View>
 
-          <TouchableOpacity
-            onPress={() => setPendingVerification(false)}
-            className="mt-4 items-center"
-          >
-            <Text className="text-blue-600 text-sm font-semibold">
-              ← Back to sign up
-            </Text>
-          </TouchableOpacity>
-        </View>
+              {/* Verification Icon */}
+              <View style={s.verifyIconWrap}>
+                <View style={s.verifyIconCircle}>
+                  <Ionicons name="mail-outline" size={32} color={BRAND} />
+                </View>
+              </View>
+
+              <Text style={s.verifyHeading}>Check your email</Text>
+              <Text style={s.verifySubtext}>
+                We sent a 6-digit code to{"\n"}
+                <Text style={{ fontWeight: "700", color: TEXT_PRIMARY }}>{email}</Text>
+              </Text>
+
+              {/* Error */}
+              {error ? (
+                <View style={s.errorBox}>
+                  <Ionicons name="alert-circle" size={16} color={ERROR_TEXT} />
+                  <Text style={s.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              {/* Code Input */}
+              <View style={[s.fieldGroup, { marginTop: 24 }]}>
+                <Text style={s.label}>Verification Code</Text>
+                <TextInput
+                  style={s.codeInput}
+                  placeholder="000000"
+                  placeholderTextColor={TEXT_MUTED}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  value={verificationCode}
+                  onChangeText={(t) => { setVerificationCode(t); setError(""); }}
+                  editable={!isSubmitting}
+                />
+              </View>
+
+              {/* Verify Button */}
+              <TouchableOpacity
+                onPress={handleVerify}
+                disabled={isSubmitting || verificationCode.length < 6}
+                activeOpacity={0.85}
+                style={[
+                  s.primaryBtn,
+                  (isSubmitting || verificationCode.length < 6) && s.primaryBtnDisabled,
+                ]}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={s.primaryBtnText}>Verify Email</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Back */}
+              <TouchableOpacity
+                onPress={() => { setPendingVerification(false); setError(""); }}
+                activeOpacity={0.6}
+                style={s.backBtn}
+              >
+                <Ionicons name="arrow-back" size={16} color={BRAND} />
+                <Text style={s.backBtnText}>Back to sign up</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
       </View>
     );
   }
@@ -245,195 +274,503 @@ export default function SignUpScreen() {
   // ─── Sign Up Form ─────────────────────────────────────
 
   return (
-    <View className="flex-1 bg-brand-surface">
-      <LinearGradient
-        colors={["#2563EB", "#3B82F6"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={{ borderBottomLeftRadius: 40, borderBottomRightRadius: 40 }}
-      >
-        <SafeAreaView edges={["top"]}>
-          <View className="px-6 pt-4 pb-10 items-center">
-            <View className="w-16 h-16 rounded-2xl bg-white/20 items-center justify-center mb-4">
-              <Ionicons name="person-add" size={32} color="#fff" />
-            </View>
-            <Text className="text-3xl font-black text-white tracking-tight">
-              Create account
-            </Text>
-            <Text className="text-blue-100 text-sm font-medium mt-1">
-              Join EasyPG to get started
-            </Text>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <View style={s.root}>
+      <SafeAreaView edges={["top"]} style={s.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={s.flex}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
-          <View className="mx-5 -mt-5 bg-white rounded-3xl p-6">
-            {error ? (
-              <View className="bg-red-50 rounded-xl px-4 py-3 mb-4 border border-red-100">
-                <Text className="text-red-500 text-sm text-center">{error}</Text>
-              </View>
-            ) : null}
-
-            {/* Name Row */}
-            <View className="flex-row gap-3 mb-4">
-              <View className="flex-1">
-                <Text className="text-xs font-semibold text-brand-on-surface-muted uppercase tracking-wide mb-2 ml-1">
-                  First Name
-                </Text>
-                <TextInput
-                  className="bg-brand-surface-low rounded-xl px-4 py-3.5 text-base text-brand-on-surface"
-                  placeholder="John"
-                  placeholderTextColor="#9CA3AF"
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  editable={!isSubmitting}
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-xs font-semibold text-brand-on-surface-muted uppercase tracking-wide mb-2 ml-1">
-                  Last Name
-                </Text>
-                <TextInput
-                  className="bg-brand-surface-low rounded-xl px-4 py-3.5 text-base text-brand-on-surface"
-                  placeholder="Doe"
-                  placeholderTextColor="#9CA3AF"
-                  value={lastName}
-                  onChangeText={setLastName}
-                  editable={!isSubmitting}
-                />
-              </View>
+          <ScrollView
+            ref={scrollRef}
+            contentContainerStyle={s.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {/* ── Logo & Brand ────────────────────────────── */}
+            <View style={s.logoSection}>
+              <Image
+                source={require("../../assets/images/logo.png")}
+                style={s.logo}
+                resizeMode="contain"
+              />
+              <Text style={s.brandName}>EasyPG</Text>
+              <Text style={s.tagline}>Find Home, Away From Home</Text>
             </View>
 
-            {/* Email */}
-            <View className="mb-4">
-              <Text className="text-xs font-semibold text-brand-on-surface-muted uppercase tracking-wide mb-2 ml-1">
-                Email <Text className="text-red-400">*</Text>
-              </Text>
-              <View className="flex-row items-center bg-brand-surface-low rounded-xl px-4">
-                <Ionicons name="mail-outline" size={18} color="#737686" />
-                <TextInput
-                  className="flex-1 text-base text-brand-on-surface py-3.5 pl-3"
-                  placeholder="your@email.com"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  value={email}
-                  onChangeText={setEmail}
-                  editable={!isSubmitting}
-                />
-              </View>
-            </View>
+            {/* ── Form ────────────────────────────────────── */}
+            <View style={s.formSection}>
+              <Text style={s.heading}>Create account</Text>
+              <Text style={s.subheading}>Join EasyPG to get started</Text>
 
-            {/* Password */}
-            <View className="mb-6">
-              <Text className="text-xs font-semibold text-brand-on-surface-muted uppercase tracking-wide mb-2 ml-1">
-                Password <Text className="text-red-400">*</Text>
-              </Text>
-              <View className="flex-row items-center bg-brand-surface-low rounded-xl px-4">
-                <Ionicons name="lock-closed-outline" size={18} color="#737686" />
-                <TextInput
-                  className="flex-1 text-base text-brand-on-surface py-3.5 pl-3"
-                  placeholder="Create a strong password"
-                  placeholderTextColor="#9CA3AF"
-                  secureTextEntry={!showPassword}
-                  value={password}
-                  onChangeText={setPassword}
-                  editable={!isSubmitting}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              {/* Error */}
+              {error ? (
+                <View style={s.errorBox}>
+                  <Ionicons name="alert-circle" size={16} color={ERROR_TEXT} />
+                  <Text style={s.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              {/* Name Row */}
+              <View style={s.nameRow}>
+                <View style={s.nameField}>
+                  <Text style={s.label}>First Name</Text>
+                  <View
+                    style={[
+                      s.inputRow,
+                      focusedField === "firstName" && s.inputRowFocused,
+                    ]}
+                  >
+                    <TextInput
+                      style={s.inputNoIcon}
+                      placeholder="John"
+                      placeholderTextColor={TEXT_MUTED}
+                      returnKeyType="next"
+                      value={firstName}
+                      onChangeText={setFirstName}
+                      onFocus={() => setFocusedField("firstName")}
+                      onBlur={() => setFocusedField(null)}
+                      onSubmitEditing={() => lastNameRef.current?.focus()}
+                      editable={!isSubmitting}
+                    />
+                  </View>
+                </View>
+                <View style={s.nameField}>
+                  <Text style={s.label}>Last Name</Text>
+                  <View
+                    style={[
+                      s.inputRow,
+                      focusedField === "lastName" && s.inputRowFocused,
+                    ]}
+                  >
+                    <TextInput
+                      ref={lastNameRef}
+                      style={s.inputNoIcon}
+                      placeholder="Doe"
+                      placeholderTextColor={TEXT_MUTED}
+                      returnKeyType="next"
+                      value={lastName}
+                      onChangeText={setLastName}
+                      onFocus={() => setFocusedField("lastName")}
+                      onBlur={() => setFocusedField(null)}
+                      onSubmitEditing={() => emailRef.current?.focus()}
+                      editable={!isSubmitting}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Email */}
+              <View style={s.fieldGroup}>
+                <Text style={s.label}>
+                  Email <Text style={{ color: ERROR_TEXT }}>*</Text>
+                </Text>
+                <View
+                  style={[
+                    s.inputRow,
+                    focusedField === "email" && s.inputRowFocused,
+                  ]}
+                >
                   <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    name="mail-outline"
                     size={18}
-                    color="#737686"
+                    color={focusedField === "email" ? BRAND : TEXT_MUTED}
                   />
-                </TouchableOpacity>
+                  <TextInput
+                    ref={emailRef}
+                    style={s.input}
+                    placeholder="your@email.com"
+                    placeholderTextColor={TEXT_MUTED}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="next"
+                    value={email}
+                    onChangeText={(t) => { setEmail(t); setError(""); }}
+                    onFocus={() => setFocusedField("email")}
+                    onBlur={() => setFocusedField(null)}
+                    onSubmitEditing={() => passwordRef.current?.focus()}
+                    editable={!isSubmitting}
+                  />
+                </View>
               </View>
-            </View>
 
-            {/* Create Account Button */}
-            <TouchableOpacity
-              onPress={handleSignUp}
-              disabled={isSubmitting}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={["#004ac6", "#2563eb"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{ borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
+              {/* Password */}
+              <View style={s.fieldGroup}>
+                <Text style={s.label}>
+                  Password <Text style={{ color: ERROR_TEXT }}>*</Text>
+                </Text>
+                <View
+                  style={[
+                    s.inputRow,
+                    focusedField === "password" && s.inputRowFocused,
+                  ]}
+                >
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={18}
+                    color={focusedField === "password" ? BRAND : TEXT_MUTED}
+                  />
+                  <TextInput
+                    ref={passwordRef}
+                    style={s.input}
+                    placeholder="Create a strong password"
+                    placeholderTextColor={TEXT_MUTED}
+                    secureTextEntry={!showPassword}
+                    returnKeyType="done"
+                    value={password}
+                    onChangeText={(t) => { setPassword(t); setError(""); }}
+                    onFocus={() => {
+                      setFocusedField("password");
+                      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+                    }}
+                    onBlur={() => setFocusedField(null)}
+                    onSubmitEditing={handleSignUp}
+                    editable={!isSubmitting}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color={focusedField === "password" ? BRAND : TEXT_MUTED}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Create Account Button */}
+              <TouchableOpacity
+                onPress={handleSignUp}
+                disabled={isSubmitting}
+                activeOpacity={0.85}
+                style={[
+                  s.primaryBtn,
+                  { marginTop: 8 },
+                  isSubmitting && s.primaryBtnDisabled,
+                ]}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text className="text-white text-base font-bold">
-                    Create Account
-                  </Text>
+                  <Text style={s.primaryBtnText}>Create Account</Text>
                 )}
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View className="flex-row items-center my-6">
-              <View className="flex-1 h-px bg-brand-surface-low" />
-              <Text className="text-brand-outline text-xs mx-4 font-medium">
-                or continue with
-              </Text>
-              <View className="flex-1 h-px bg-brand-surface-low" />
-            </View>
-
-            {/* Social Buttons */}
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={handleGoogleSignUp}
-                disabled={isSubmitting}
-                activeOpacity={0.8}
-                className="flex-1 flex-row items-center justify-center bg-brand-surface-low rounded-xl py-3.5 gap-2"
-              >
-                <Ionicons name="logo-google" size={18} color="#2563EB" />
-                <Text className="text-brand-on-surface text-sm font-semibold">
-                  Google
-                </Text>
               </TouchableOpacity>
 
-              {Platform.OS === "ios" && (
+              {/* Divider */}
+              <View style={s.divider}>
+                <View style={s.dividerLine} />
+                <Text style={s.dividerText}>or</Text>
+                <View style={s.dividerLine} />
+              </View>
+
+              {/* Social Buttons */}
+              <View style={s.socialRow}>
                 <TouchableOpacity
-                  onPress={handleAppleSignUp}
+                  onPress={handleGoogleSignUp}
                   disabled={isSubmitting}
-                  activeOpacity={0.8}
-                  className="flex-1 flex-row items-center justify-center bg-brand-on-surface rounded-xl py-3.5 gap-2"
+                  activeOpacity={0.7}
+                  style={s.socialBtn}
                 >
-                  <Ionicons name="logo-apple" size={18} color="#fff" />
-                  <Text className="text-white text-sm font-semibold">Apple</Text>
+                  <Ionicons name="logo-google" size={18} color="#4285F4" />
+                  <Text style={s.socialBtnText}>Google</Text>
                 </TouchableOpacity>
-              )}
-            </View>
 
-            {/* Sign In Link */}
-            <View className="flex-row justify-center mt-6 gap-1">
-              <Text className="text-brand-on-surface-muted text-sm">
-                Already have an account?
-              </Text>
-              <Link href="/(auth)/sign-in" asChild>
-                <TouchableOpacity>
-                  <Text className="text-blue-600 text-sm font-bold">Sign In</Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
-          </View>
+                {Platform.OS === "ios" && (
+                  <TouchableOpacity
+                    onPress={handleAppleSignUp}
+                    disabled={isSubmitting}
+                    activeOpacity={0.7}
+                    style={[s.socialBtn, s.socialBtnApple]}
+                  >
+                    <Ionicons name="logo-apple" size={18} color="#fff" />
+                    <Text style={[s.socialBtnText, { color: "#fff" }]}>
+                      Apple
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
 
-          <View className="h-8" />
-        </ScrollView>
-      </KeyboardAvoidingView>
+              {/* Sign In Link */}
+              <View style={s.switchRow}>
+                <Text style={s.switchText}>Already have an account?</Text>
+                <Link href="/(auth)/sign-in" asChild>
+                  <TouchableOpacity activeOpacity={0.6}>
+                    <Text style={s.switchLink}> Sign In</Text>
+                  </TouchableOpacity>
+                </Link>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </View>
   );
 }
+
+// ─── Styles ───────────────────────────────────────────────
+
+const s = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  flex: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+
+  /* Logo */
+  logoSection: {
+    alignItems: "center",
+    paddingTop: 24,
+    paddingBottom: 4,
+  },
+  logo: {
+    width: 64,
+    height: 64,
+    marginBottom: 6,
+  },
+  brandName: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: BRAND,
+    letterSpacing: -0.5,
+  },
+  tagline: {
+    fontSize: 12,
+    color: TEXT_SECONDARY,
+    marginTop: 2,
+  },
+
+  /* Form */
+  formSection: {
+    paddingTop: 20,
+  },
+  heading: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: TEXT_PRIMARY,
+    letterSpacing: -0.3,
+  },
+  subheading: {
+    fontSize: 15,
+    color: TEXT_SECONDARY,
+    marginTop: 4,
+    marginBottom: 20,
+  },
+
+  /* Error */
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+    backgroundColor: ERROR_BG,
+    borderWidth: 1,
+    borderColor: ERROR_BORDER,
+    borderRadius: 12,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    color: ERROR_TEXT,
+    lineHeight: 18,
+  },
+
+  /* Fields */
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  nameRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 16,
+  },
+  nameField: {
+    flex: 1,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: TEXT_PRIMARY,
+    marginBottom: 6,
+    marginLeft: 2,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: INPUT_BG,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: INPUT_BORDER,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  inputRowFocused: {
+    borderColor: INPUT_FOCUS,
+    backgroundColor: BRAND_LIGHT,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: TEXT_PRIMARY,
+    paddingVertical: 14,
+  },
+  inputNoIcon: {
+    flex: 1,
+    fontSize: 15,
+    color: TEXT_PRIMARY,
+    paddingVertical: 14,
+    paddingHorizontal: 2,
+  },
+
+  /* Code Input (verification) */
+  codeInput: {
+    backgroundColor: INPUT_BG,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: INPUT_BORDER,
+    textAlign: "center",
+    fontSize: 28,
+    fontWeight: "700",
+    color: TEXT_PRIMARY,
+    paddingVertical: 16,
+    letterSpacing: 12,
+  },
+
+  /* Primary Button */
+  primaryBtn: {
+    backgroundColor: BRAND,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  primaryBtnDisabled: {
+    opacity: 0.5,
+  },
+  primaryBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+
+  /* Divider */
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: INPUT_BORDER,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 13,
+    color: TEXT_MUTED,
+    fontWeight: "500",
+  },
+
+  /* Social */
+  socialRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  socialBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: INPUT_BG,
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: INPUT_BORDER,
+  },
+  socialBtnApple: {
+    backgroundColor: "#000",
+    borderColor: "#000",
+  },
+  socialBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: TEXT_PRIMARY,
+  },
+
+  /* Switch */
+  switchRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 24,
+  },
+  switchText: {
+    fontSize: 14,
+    color: TEXT_SECONDARY,
+  },
+  switchLink: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: BRAND,
+  },
+
+  /* Verify Screen */
+  verifyIconWrap: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  verifyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: BRAND_LIGHT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  verifyHeading: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: TEXT_PRIMARY,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  verifySubtext: {
+    fontSize: 14,
+    color: TEXT_SECONDARY,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+
+  /* Back button */
+  backBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 20,
+    paddingVertical: 8,
+  },
+  backBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: BRAND,
+  },
+});

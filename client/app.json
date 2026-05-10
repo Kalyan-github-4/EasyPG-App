@@ -36,9 +36,9 @@
           "image": "./assets/images/favicon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0066FF",
+          "backgroundColor": "#F5F7FA",
           "dark": {
-            "backgroundColor": "#0044CC"
+            "backgroundColor": "#121417"
           }
         }
       ],

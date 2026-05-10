@@ -3,8 +3,7 @@ import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { ActivityIndicator, Image } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { ActivityIndicator, Image, View } from "react-native";
 import "react-native-reanimated";
 
 import { tokenCache } from "@/src/lib/clerk-token-cache";
@@ -45,17 +44,16 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
 
   if (!isLoaded) {
     return (
-      <LinearGradient
-        colors={["#0F0F1A", "#1A1A2E", "#16213E"]}
-        style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 32 }}
+      <View
+        style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF", gap: 24 }}
       >
         <Image
-          source={require("../assets/images/icon.png")}
-          style={{ width: 160, height: 60 }}
+          source={require("../assets/images/logo.png")}
+          style={{ width: 72, height: 72 }}
           resizeMode="contain"
         />
-        <ActivityIndicator size="large" color="#818CF8" />
-      </LinearGradient>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </View>
     );
   }
 
@@ -88,7 +86,7 @@ export default function RootLayout() {
               <Stack.Screen name="(app)" />
             </Stack>
           </NavigationGuard>
-          <StatusBar style="light" />
+          <StatusBar style="auto" />
         </ThemeProvider>
       </ClerkLoaded>
     </ClerkProvider>
