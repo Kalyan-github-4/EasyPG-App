@@ -248,7 +248,7 @@ export default function ForgotPasswordScreen() {
                 }}
               >
                 <Image
-                  source={require("../../assets/images/logo.png")}
+                  source={require("../../assets/images/icon.png")}
                   style={{ width: 30, height: 30 }}
                   resizeMode="contain"
                 />

@@ -136,7 +136,7 @@ export default function SignInScreen() {
               }}
             >
               <Image
-                source={require("../../assets/images/logo.webp")}
+                source={require("../../assets/images/icon.png")}
                 style={{ width: 56, height: 56 }}
                 resizeMode="contain"
               />
