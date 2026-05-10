@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { useSignIn, useSSO } from "@clerk/clerk-expo";
 import { useRouter, Link } from "expo-router";
@@ -106,24 +107,59 @@ export default function SignInScreen() {
   // ─── UI ───────────────────────────────────────────────
 
   return (
-    <View className="flex-1 bg-brand-surface">
-      {/* Blue Hero Header */}
+    <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+      {/* Gradient Header with Logo */}
       <LinearGradient
-        colors={["#2563EB", "#3B82F6"]}
+        colors={["#0B1F47", "#1A3A7A", "#2563EB"]}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={{ borderBottomLeftRadius: 40, borderBottomRightRadius: 40 }}
+        end={{ x: 0.5, y: 1 }}
+        style={{
+          borderBottomLeftRadius: 36,
+          borderBottomRightRadius: 36,
+          overflow: "hidden",
+        }}
       >
         <SafeAreaView edges={["top"]}>
-          <View className="items-center px-6 pt-4 pb-10">
-            {/* Logo */}
-            <View className="items-center justify-center w-16 h-16 mb-4 rounded-2xl bg-white/20">
-              <Ionicons name="home" size={32} color="#fff" />
+          <View style={{ alignItems: "center", paddingHorizontal: 24, paddingTop: 20, paddingBottom: 36 }}>
+            {/* Logo Image */}
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 24,
+                backgroundColor: "rgba(255,255,255,0.15)",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 14,
+                borderWidth: 2,
+                borderColor: "rgba(255,255,255,0.2)",
+              }}
+            >
+              <Image
+                source={require("../../assets/images/logo.webp")}
+                style={{ width: 56, height: 56 }}
+                resizeMode="contain"
+              />
             </View>
-            <Text className="text-3xl font-black tracking-tight text-white">
+            <Text
+              style={{
+                fontSize: 30,
+                fontWeight: "900",
+                color: "#FFFFFF",
+                letterSpacing: -0.5,
+              }}
+            >
               EasyPG
             </Text>
-            <Text className="mt-1 text-sm font-medium text-blue-100">
+            <Text
+              style={{
+                marginTop: 6,
+                fontSize: 14,
+                fontWeight: "500",
+                color: "rgba(191, 219, 254, 0.9)",
+                letterSpacing: 0.3,
+              }}
+            >
               Find Home, Away From Home
             </Text>
           </View>
@@ -133,39 +169,105 @@ export default function SignInScreen() {
       {/* Form Card */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
+        style={{ flex: 1 }}
       >
         <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View className="flex-1 p-6 mx-5 -mt-5 bg-white rounded-3xl shadow-soft-2">
-            <Text className="mb-1 text-2xl font-extrabold tracking-tight text-brand-on-surface">
+          <View
+            style={{
+              flex: 1,
+              marginHorizontal: 20,
+              marginTop: -20,
+              backgroundColor: "#FFFFFF",
+              borderRadius: 24,
+              padding: 24,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.08,
+              shadowRadius: 24,
+              elevation: 8,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 22,
+                fontWeight: "800",
+                color: "#0F172A",
+                letterSpacing: -0.3,
+                marginBottom: 4,
+              }}
+            >
               Welcome back
             </Text>
-            <Text className="mb-6 text-sm text-brand-on-surface-muted">
+            <Text
+              style={{
+                fontSize: 14,
+                color: "#94A3B8",
+                marginBottom: 20,
+              }}
+            >
               Sign in to continue
             </Text>
 
             {/* Error */}
             {error ? (
-              <View className="px-4 py-3 mb-4 border border-red-100 bg-red-50 rounded-xl">
-                <Text className="text-sm text-center text-red-500">{error}</Text>
+              <View
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  marginBottom: 16,
+                  backgroundColor: "#FEF2F2",
+                  borderWidth: 1,
+                  borderColor: "#FEE2E2",
+                  borderRadius: 14,
+                }}
+              >
+                <Text style={{ fontSize: 13, textAlign: "center", color: "#EF4444" }}>
+                  {error}
+                </Text>
               </View>
             ) : null}
 
             {/* Email */}
-            <View className="mb-4">
-              <Text className="mb-2 ml-1 text-xs font-semibold tracking-wide uppercase text-brand-on-surface-muted">
+            <View style={{ marginBottom: 14 }}>
+              <Text
+                style={{
+                  marginBottom: 8,
+                  marginLeft: 2,
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: "#64748B",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
                 Email
               </Text>
-              <View className="flex-row items-center px-4 border border-transparent bg-brand-surface-low rounded-xl focus:border-blue-500">
-                <Ionicons name="mail-outline" size={18} color="#737686" />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingHorizontal: 16,
+                  backgroundColor: "#F8FAFC",
+                  borderRadius: 14,
+                  borderWidth: 1.5,
+                  borderColor: "#E2E8F0",
+                }}
+              >
+                <Ionicons name="mail-outline" size={18} color="#94A3B8" />
                 <TextInput
-                  className="flex-1 text-base text-brand-on-surface py-3.5 pl-3"
+                  style={{
+                    flex: 1,
+                    fontSize: 15,
+                    color: "#0F172A",
+                    paddingVertical: 14,
+                    paddingLeft: 12,
+                  }}
                   placeholder="your@email.com"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor="#CBD5E1"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -177,36 +279,65 @@ export default function SignInScreen() {
             </View>
 
             {/* Password */}
-            <View className="mb-2">
-              <Text className="mb-2 ml-1 text-xs font-semibold tracking-wide uppercase text-brand-on-surface-muted">
+            <View style={{ marginBottom: 8 }}>
+              <Text
+                style={{
+                  marginBottom: 8,
+                  marginLeft: 2,
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: "#64748B",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
                 Password
               </Text>
-              <View className="flex-row items-center px-4 bg-brand-surface-low rounded-xl">
-                <Ionicons name="lock-closed-outline" size={18} color="#737686" />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingHorizontal: 16,
+                  backgroundColor: "#F8FAFC",
+                  borderRadius: 14,
+                  borderWidth: 1.5,
+                  borderColor: "#E2E8F0",
+                }}
+              >
+                <Ionicons name="lock-closed-outline" size={18} color="#94A3B8" />
                 <TextInput
-                  className="flex-1 text-base text-brand-on-surface py-3.5 pl-3"
+                  style={{
+                    flex: 1,
+                    fontSize: 15,
+                    color: "#0F172A",
+                    paddingVertical: 14,
+                    paddingLeft: 12,
+                  }}
                   placeholder="Enter your password"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor="#CBD5E1"
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
                   editable={!isSubmitting}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
                   <Ionicons
                     name={showPassword ? "eye-off-outline" : "eye-outline"}
                     size={18}
-                    color="#737686"
+                    color="#94A3B8"
                   />
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Forgot Password Link */}
-            <View className="items-end mb-5">
+            <View style={{ alignItems: "flex-end", marginBottom: 20 }}>
               <Link href="/(auth)/forgot-password" asChild>
                 <TouchableOpacity>
-                  <Text className="text-sm font-semibold text-blue-600">
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
                     Forgot password?
                   </Text>
                 </TouchableOpacity>
@@ -220,38 +351,67 @@ export default function SignInScreen() {
               activeOpacity={0.85}
             >
               <LinearGradient
-                colors={["#004ac6", "#2563eb"]}
+                colors={["#0B3D91", "#2563EB"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={{ borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
+                style={{
+                  borderRadius: 14,
+                  paddingVertical: 16,
+                  alignItems: "center",
+                  shadowColor: "#2563EB",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
               >
                 {isSubmitting ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text className="text-base font-bold text-white">Sign In</Text>
+                  <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFFFFF" }}>
+                    Sign In
+                  </Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
 
             {/* Divider */}
-            <View className="flex-row items-center my-6">
-              <View className="flex-1 h-px bg-brand-surface-low" />
-              <Text className="mx-4 text-xs font-medium text-brand-outline">
+            <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 22 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: "#E2E8F0" }} />
+              <Text
+                style={{
+                  marginHorizontal: 14,
+                  fontSize: 12,
+                  fontWeight: "500",
+                  color: "#94A3B8",
+                }}
+              >
                 or continue with
               </Text>
-              <View className="flex-1 h-px bg-brand-surface-low" />
+              <View style={{ flex: 1, height: 1, backgroundColor: "#E2E8F0" }} />
             </View>
 
             {/* Social Buttons */}
-            <View className="flex-row gap-3">
+            <View style={{ flexDirection: "row", gap: 12 }}>
               <TouchableOpacity
                 onPress={handleGoogleSignIn}
                 disabled={isSubmitting}
                 activeOpacity={0.8}
-                className="flex-1 flex-row items-center justify-center bg-brand-surface-low rounded-xl py-3.5 gap-2"
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "#F8FAFC",
+                  borderRadius: 14,
+                  paddingVertical: 14,
+                  gap: 8,
+                  borderWidth: 1.5,
+                  borderColor: "#E2E8F0",
+                }}
               >
                 <Ionicons name="logo-google" size={18} color="#2563EB" />
-                <Text className="text-sm font-semibold text-brand-on-surface">
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#0F172A" }}>
                   Google
                 </Text>
               </TouchableOpacity>
@@ -261,29 +421,49 @@ export default function SignInScreen() {
                   onPress={handleAppleSignIn}
                   disabled={isSubmitting}
                   activeOpacity={0.8}
-                  className="flex-1 flex-row items-center justify-center bg-brand-on-surface rounded-xl py-3.5 gap-2"
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#0F172A",
+                    borderRadius: 14,
+                    paddingVertical: 14,
+                    gap: 8,
+                  }}
                 >
                   <Ionicons name="logo-apple" size={18} color="#fff" />
-                  <Text className="text-sm font-semibold text-white">Apple</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>
+                    Apple
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
 
             {/* Sign Up Link */}
-            <View className="flex-row justify-center gap-1 mt-6">
-              <Text className="text-sm text-brand-on-surface-muted">
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 4,
+                marginTop: 22,
+              }}
+            >
+              <Text style={{ fontSize: 14, color: "#94A3B8" }}>
                 Don&apos;t have an account?
               </Text>
               <Link href="/(auth)/sign-up" asChild>
                 <TouchableOpacity>
-                  <Text className="text-sm font-bold text-blue-600">Sign Up</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: "#2563EB" }}>
+                    Sign Up
+                  </Text>
                 </TouchableOpacity>
               </Link>
             </View>
           </View>
 
           {/* Bottom padding */}
-          <View className="h-8" />
+          <View style={{ height: 32 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

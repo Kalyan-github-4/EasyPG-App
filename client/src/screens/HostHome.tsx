@@ -8,7 +8,6 @@ import {
   Dimensions,
   Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
 import {
@@ -113,7 +112,7 @@ export default function HostHome({ firstName }: Props) {
   // ─── Loading state ─────────────────────────────
   if (loading && !refreshing) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }} edges={["top"]}>
+      <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
           <HostHeader firstName={firstName} avatarUrl={dbUser?.avatarUrl} subtitle="Loading your dashboard…" onProfilePress={goToProfile} />
           <View style={{ paddingHorizontal: 20, marginTop: 20, gap: 14 }}>
@@ -131,12 +130,12 @@ export default function HostHome({ firstName }: Props) {
             <PropertyFeaturedRailSkeleton count={3} />
           </View>
         </ScrollView>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }} edges={["top"]}>
+    <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
@@ -399,7 +398,7 @@ export default function HostHome({ firstName }: Props) {
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

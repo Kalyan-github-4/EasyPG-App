@@ -62,10 +62,20 @@ export default function BecomeHostScreen() {
   const hasHostProfile = Boolean(dbUser?.hostProfileCompleted);
   const isHost = dbUser?.role === "host";
 
+  // If user is already a host, redirect them to the host dashboard
+  React.useEffect(() => {
+    if (isHost) {
+      router.replace("/(app)/(tabs)");
+    }
+  }, [isHost]);
+
+  if (isHost) return null;
+
+  // If they completed host profile before, show a simple one-click switch
   if (hasHostProfile && !isHost) {
     return (
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: "#F8F9FA" }}
+        style={{ flex: 1, backgroundColor: "#F8FAFC" }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View
@@ -96,10 +106,10 @@ export default function BecomeHostScreen() {
           </TouchableOpacity>
           <View>
             <Text style={{ fontSize: 18, fontWeight: "800", color: "#0F172A" }}>
-              Switch to host
+              Welcome back, Host!
             </Text>
             <Text style={{ fontSize: 12, color: "#94A3B8", marginTop: 1 }}>
-              Your host profile is already saved
+              Your host profile is already set up
             </Text>
           </View>
         </View>
@@ -107,31 +117,54 @@ export default function BecomeHostScreen() {
         <View style={{ flex: 1, padding: 20, justifyContent: "center" }}>
           <View
             style={{
-              backgroundColor: "#EFF6FF",
-              borderRadius: 18,
-              padding: 18,
-              borderWidth: 1,
-              borderColor: "#BFDBFE",
+              backgroundColor: "#fff",
+              borderRadius: 24,
+              padding: 24,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.08,
+              shadowRadius: 24,
+              elevation: 8,
             }}
           >
+            {/* Icon */}
             <View
               style={{
-                width: 52,
-                height: 52,
-                borderRadius: 16,
-                backgroundColor: "#2563EB",
+                width: 64,
+                height: 64,
+                borderRadius: 20,
+                backgroundColor: "#EFF6FF",
                 alignItems: "center",
                 justifyContent: "center",
-                marginBottom: 14,
+                marginBottom: 18,
+                alignSelf: "center",
               }}
             >
-              <Ionicons name="swap-horizontal" size={24} color="#fff" />
+              <Ionicons name="swap-horizontal" size={28} color="#2563EB" />
             </View>
-            <Text style={{ fontSize: 20, fontWeight: "800", color: "#0F172A" }}>
-              Your host details are saved
+
+            <Text
+              style={{
+                fontSize: 22,
+                fontWeight: "900",
+                color: "#0F172A",
+                textAlign: "center",
+                letterSpacing: -0.3,
+              }}
+            >
+              Switch to Host Panel
             </Text>
-            <Text style={{ fontSize: 13, color: "#475569", marginTop: 8, lineHeight: 19 }}>
-              Switch back to host view without filling the form again.
+            <Text
+              style={{
+                fontSize: 14,
+                color: "#64748B",
+                marginTop: 8,
+                lineHeight: 20,
+                textAlign: "center",
+              }}
+            >
+              No need to fill the form again. Your host profile and listings are
+              saved. Just tap below to switch.
             </Text>
 
             <TouchableOpacity
@@ -149,23 +182,47 @@ export default function BecomeHostScreen() {
                   setSubmitting(false);
                 }
               }}
-              activeOpacity={0.9}
+              activeOpacity={0.85}
               disabled={submitting}
               style={{
-                marginTop: 18,
-                borderRadius: 14,
+                marginTop: 24,
+                borderRadius: 16,
                 backgroundColor: "#2563EB",
-                paddingVertical: 14,
+                paddingVertical: 16,
                 alignItems: "center",
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 10,
+                shadowColor: "#2563EB",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 4,
               }}
             >
               {submitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={{ color: "#fff", fontSize: 15, fontWeight: "800" }}>
-                  Switch to host
-                </Text>
+                <>
+                  <Ionicons name="swap-horizontal" size={20} color="#fff" />
+                  <Text style={{ color: "#fff", fontSize: 16, fontWeight: "800" }}>
+                    Switch to Host
+                  </Text>
+                </>
               )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{
+                marginTop: 12,
+                paddingVertical: 12,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "600", color: "#94A3B8" }}>
+                Stay as Guest
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
