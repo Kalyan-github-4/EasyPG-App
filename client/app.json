@@ -54,6 +54,12 @@
         "projectId": "0848cd86-9d03-4b5e-957b-583ca40b919f"
       }
     },
-    "owner": "kalyan439"
+    "owner": "kalyan439",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/0848cd86-9d03-4b5e-957b-583ca40b919f"
+    }
   }
 }
