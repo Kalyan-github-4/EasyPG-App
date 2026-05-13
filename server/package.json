@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed-properties.ts",
+    "db:migrate:manual": "tsx scripts/run-migration.ts",
     "lint": "eslint src/",
     "format": "prettier --write src/"
   },

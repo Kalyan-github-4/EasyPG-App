@@ -1,6 +1,6 @@
 import express from "express";
 import { z } from "zod";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import {
@@ -11,6 +11,21 @@ import {
 import { syncUser } from "../middleware/auth.js";
 
 const router = express.Router();
+
+const DEFAULT_PAGE_LIMIT = 20;
+const MAX_PAGE_LIMIT = 50;
+
+function parsePagination(query: Record<string, unknown>) {
+  const rawLimit = Number(query.limit);
+  const rawOffset = Number(query.offset);
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(Math.max(Math.trunc(rawLimit), 1), MAX_PAGE_LIMIT)
+    : DEFAULT_PAGE_LIMIT;
+  const offset = Number.isFinite(rawOffset)
+    ? Math.max(Math.trunc(rawOffset), 0)
+    : 0;
+  return { limit, offset };
+}
 
 // ─── Schemas ──────────────────────────────────────────────
 
@@ -204,14 +219,32 @@ router.get("/me", syncUser, requireAuth, async (req, res) => {
         .json({ success: false, message: "Guests only" });
     }
 
-    const rows = await db
-      .select()
-      .from(bookingRequests)
-      .where(eq(bookingRequests.guestId, dbUser.id))
-      .orderBy(desc(bookingRequests.requestedAt));
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
 
+    const [countResult, rows] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(bookingRequests)
+        .where(eq(bookingRequests.guestId, dbUser.id)),
+      db
+        .select()
+        .from(bookingRequests)
+        .where(eq(bookingRequests.guestId, dbUser.id))
+        .orderBy(desc(bookingRequests.requestedAt))
+        .limit(limit)
+        .offset(offset),
+    ]);
+
+    const total = Number(countResult[0]?.count) || 0;
     const bookings = await enrichBookings(rows);
-    res.json({ success: true, bookings });
+    const nextOffset = offset + rows.length;
+    const hasMore = nextOffset < total;
+
+    res.json({
+      success: true,
+      bookings,
+      pagination: { limit, offset, total, hasMore, nextOffset: hasMore ? nextOffset : null },
+    });
   } catch (err) {
     console.error("List my bookings error:", err);
     res.status(500).json({ success: false, message: "Failed to load bookings" });
@@ -233,6 +266,8 @@ router.get("/host", syncUser, requireAuth, async (req, res) => {
         ? (req.query.propertyId as string)
         : null;
 
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
+
     // Only select IDs — no need for full property rows
     const myProps = await db
       .select({ id: properties.id })
@@ -240,7 +275,11 @@ router.get("/host", syncUser, requireAuth, async (req, res) => {
       .where(eq(properties.hostId, dbUser.id));
 
     if (myProps.length === 0) {
-      return res.json({ success: true, bookings: [] });
+      return res.json({
+        success: true,
+        bookings: [],
+        pagination: { limit, offset, total: 0, hasMore: false, nextOffset: null },
+      });
     }
 
     const ownedIds = myProps.map((p) => p.id);
@@ -249,17 +288,37 @@ router.get("/host", syncUser, requireAuth, async (req, res) => {
       : ownedIds;
 
     if (filterIds.length === 0) {
-      return res.json({ success: true, bookings: [] });
+      return res.json({
+        success: true,
+        bookings: [],
+        pagination: { limit, offset, total: 0, hasMore: false, nextOffset: null },
+      });
     }
 
-    const rows = await db
-      .select()
-      .from(bookingRequests)
-      .where(inArray(bookingRequests.propertyId, filterIds))
-      .orderBy(desc(bookingRequests.requestedAt));
+    const [countResult, rows] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(bookingRequests)
+        .where(inArray(bookingRequests.propertyId, filterIds)),
+      db
+        .select()
+        .from(bookingRequests)
+        .where(inArray(bookingRequests.propertyId, filterIds))
+        .orderBy(desc(bookingRequests.requestedAt))
+        .limit(limit)
+        .offset(offset),
+    ]);
 
+    const total = Number(countResult[0]?.count) || 0;
     const bookings = await enrichBookings(rows);
-    res.json({ success: true, bookings });
+    const nextOffset = offset + rows.length;
+    const hasMore = nextOffset < total;
+
+    res.json({
+      success: true,
+      bookings,
+      pagination: { limit, offset, total, hasMore, nextOffset: hasMore ? nextOffset : null },
+    });
   } catch (err) {
     console.error("List host bookings error:", err);
     res.status(500).json({ success: false, message: "Failed to load bookings" });

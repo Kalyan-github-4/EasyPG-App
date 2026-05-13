@@ -50,13 +50,22 @@ export function invalidateUserCache(clerkId: string) {
  * Middleware: Sync Clerk user to our database.
  * After Clerk verifies the JWT, this finds or creates the user in our DB
  * so downstream route handlers can trust `req.dbUser`.
+ *
+ * Flow:
+ *   1. Check in-memory cache (0ms, TTL 60s).
+ *   2. Query DB by clerkId.
+ *   3. First-time user: fetch Clerk profile and INSERT into DB.
+ *
+ * Errors in steps 2–3 are forwarded to the global error handler
+ * rather than silently dropped, so they surface in logs.
  */
 export async function syncUser(req: Request, res: Response, next: NextFunction) {
   try {
     const { userId } = getAuth(req);
 
     if (!userId) {
-      return next(); // Not authenticated — let requireAuth handle it
+      // Not authenticated — let route-level requireAuth handle it
+      return next();
     }
 
     // 1. Check in-memory cache first (0ms)
@@ -67,22 +76,22 @@ export async function syncUser(req: Request, res: Response, next: NextFunction) 
     }
 
     // 2. Check DB
-    const existing = await db
+    const [existing] = await db
       .select()
       .from(users)
       .where(eq(users.clerkId, userId))
       .limit(1);
 
-    if (existing.length > 0) {
-      setCachedUser(userId, existing[0]);
-      (req as any).dbUser = existing[0];
+    if (existing) {
+      setCachedUser(userId, existing);
+      (req as any).dbUser = existing;
       return next();
     }
 
     // 3. First-time user: fetch from Clerk and create in our DB
     const clerkUser = await clerkClient.users.getUser(userId);
 
-    // Build name: prefer firstName + lastName from Clerk form,
+    // Build name: prefer firstName + lastName from Clerk,
     // fall back to email prefix (e.g. "john" from john@gmail.com)
     const email = clerkUser.emailAddresses[0]?.emailAddress || "";
     const nameFromClerk =
@@ -105,7 +114,7 @@ export async function syncUser(req: Request, res: Response, next: NextFunction) 
 
     setCachedUser(userId, newUser);
     (req as any).dbUser = newUser;
-    next();
+    return next();
   } catch (error) {
     console.error("syncUser error:", error);
     next(error);

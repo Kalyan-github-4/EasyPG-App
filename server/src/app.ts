@@ -21,7 +21,22 @@ const isProd = process.env.NODE_ENV === "production";
 // ─── Core Middleware ─────────────────────────────────────
 
 app.use(helmet());
-app.use(cors());
+
+// CORS: explicitly allow Authorization so Clerk JWTs pass through preflight.
+// In production restrict to your known origin(s); in dev allow all.
+const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
+  ? process.env.CORS_ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : "*";
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Content-Type"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    credentials: true,
+  })
+);
 
 // Compress all responses (gzip/brotli) — huge win for JSON payloads
 app.use(compression());

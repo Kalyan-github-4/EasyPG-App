@@ -7,6 +7,21 @@ import { syncUser } from "../middleware/auth.js";
 
 const router = express.Router();
 
+const DEFAULT_PAGE_LIMIT = 20;
+const MAX_PAGE_LIMIT = 50;
+
+function parsePagination(query: Record<string, unknown>) {
+  const rawLimit = Number(query.limit);
+  const rawOffset = Number(query.offset);
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(Math.max(Math.trunc(rawLimit), 1), MAX_PAGE_LIMIT)
+    : DEFAULT_PAGE_LIMIT;
+  const offset = Number.isFinite(rawOffset)
+    ? Math.max(Math.trunc(rawOffset), 0)
+    : 0;
+  return { limit, offset };
+}
+
 // ─── Schemas ──────────────────────────────────────────────
 
 const createInquirySchema = z.object({
@@ -249,21 +264,40 @@ router.get("/", syncUser, requireAuth, async (req, res) => {
       ? (req.query.propertyId as string)
       : null;
 
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
+
     const conditions = [
       or(eq(inquiries.guestId, dbUser.id), eq(inquiries.hostId, dbUser.id)),
     ];
     if (propertyFilter) {
       conditions.push(eq(inquiries.propertyId, propertyFilter));
     }
+    const whereClause = and(...conditions);
 
-    const rows = await db
-      .select()
-      .from(inquiries)
-      .where(and(...conditions))
-      .orderBy(desc(inquiries.lastMessageAt));
+    const [countResult, rows] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(inquiries)
+        .where(whereClause),
+      db
+        .select()
+        .from(inquiries)
+        .where(whereClause)
+        .orderBy(desc(inquiries.lastMessageAt))
+        .limit(limit)
+        .offset(offset),
+    ]);
 
+    const total = Number(countResult[0]?.count) || 0;
     const threads = await enrichThreads(rows, dbUser.id);
-    res.json({ success: true, threads });
+    const nextOffset = offset + rows.length;
+    const hasMore = nextOffset < total;
+
+    res.json({
+      success: true,
+      threads,
+      pagination: { limit, offset, total, hasMore, nextOffset: hasMore ? nextOffset : null },
+    });
   } catch (err) {
     console.error("List inquiries error:", err);
     res.status(500).json({ success: false, message: "Failed to load inquiries" });
