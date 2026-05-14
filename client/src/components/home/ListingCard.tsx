@@ -33,7 +33,7 @@ export default function ListingCard({ pg }: Props) {
       {/* ── Image ── */}
       <View style={{ height: 180 }}>
         <Image
-          source={pg.images[0]}
+          source={{ uri: pg.images[0] }}
           style={{ width: "100%", height: "100%" }}
           resizeMode="cover"
         />

@@ -4,9 +4,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
-  Dimensions,
-  Image,
+  RefreshControl
 } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
@@ -19,9 +17,7 @@ import {
   Eye,
   House,
   Lightning,
-  MapPin,
   PlusCircle,
-  Sparkle,
   Star,
   TrendUp,
   Users,
@@ -37,17 +33,18 @@ import PropertyFeaturedCard from "@/src/components/home/PropertyFeaturedCard";
 import EmptyHostHome from "@/src/components/host/EmptyHostHome";
 import { PropertyFeaturedRailSkeleton } from "@/src/components/home/PropertyFeaturedCardSkeleton";
 import Skeleton from "@/src/components/ui/Skeleton";
-import { useNotifications } from "@/src/hooks/useNotifications";
-
-const { width: SCREEN_W } = Dimensions.get("window");
+import StatCard from "@/src/components/ui/StatCard";
+import QuickAction from "@/src/components/ui/QuickAction";
+import SectionHeader from "@/src/components/ui/SectionHeader";
+import ListingInsightRow from "@/src/components/host/ListingInsightRow";
+import TipCard from "@/src/components/host/TipCard";
+import { formatShortRent } from "@/src/lib/format";
 
 type Props = { firstName: string };
 
 export default function HostHome({ firstName }: Props) {
   const { getToken } = useAuth();
   const { dbUser } = useAppAuth();
-  const { unreadCount: notifCount } = useNotifications();
-
   const [properties, setProperties] = useState<api.Property[] | null>(null);
   const [bookings, setBookings] = useState<api.BookingRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,7 +83,6 @@ export default function HostHome({ firstName }: Props) {
   const list = properties || [];
   const hasListings = list.length > 0;
   const availableCount = list.filter((p) => p.isAvailable).length;
-  const unavailableCount = list.length - availableCount;
   const totalRent = list.reduce((a, p) => a + p.rent, 0);
   const avgRent = hasListings ? Math.round(totalRent / list.length) : 0;
   const pendingCount = bookings.filter((b) => b.booking.status === "pending").length;
@@ -258,14 +254,12 @@ export default function HostHome({ firstName }: Props) {
                   icon={<House size={20} color="#2563EB" weight="fill" />}
                   value={String(list.length)}
                   label="Total Listings"
-                  accent="#2563EB"
                   bg="#EFF6FF"
                 />
                 <StatCard
                   icon={<Eye size={20} color="#10B981" weight="fill" />}
                   value={String(availableCount)}
                   label="Available"
-                  accent="#10B981"
                   bg="#ECFDF5"
                 />
               </View>
@@ -274,14 +268,12 @@ export default function HostHome({ firstName }: Props) {
                   icon={<CurrencyInr size={20} color="#F59E0B" weight="fill" />}
                   value={formatShortRent(avgRent)}
                   label="Avg Rent"
-                  accent="#F59E0B"
                   bg="#FFFBEB"
                 />
                 <StatCard
                   icon={<Star size={20} color="#8B5CF6" weight="fill" />}
                   value={avgRating}
                   label={`${totalReviews} review${totalReviews === 1 ? "" : "s"}`}
-                  accent="#8B5CF6"
                   bg="#F5F3FF"
                 />
               </View>
@@ -367,7 +359,7 @@ export default function HostHome({ firstName }: Props) {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+                contentContainerStyle={{ paddingHorizontal: 20, gap: 12, alignItems: "stretch" }}
               >
                 <TipCard
                   Icon={Camera}
@@ -398,380 +390,6 @@ export default function HostHome({ firstName }: Props) {
           </>
         )}
       </ScrollView>
-    </View>
-  );
-}
-
-// ─── Local helpers ─────────────────────────────────────────────
-
-function formatShortRent(n: number) {
-  if (n === 0) return "—";
-  if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
-  if (n >= 1000) return `₹${Math.round(n / 1000)}k`;
-  return `₹${n}`;
-}
-
-// ─── Stat Card ─────────────────────────────────────────────────
-
-function StatCard({
-  icon,
-  value,
-  label,
-  accent,
-  bg,
-}: {
-  icon: React.ReactNode;
-  value: string;
-  label: string;
-  accent: string;
-  bg: string;
-}) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: "#fff",
-        borderRadius: 18,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: "#F1F5F9",
-      }}
-    >
-      <View
-        style={{
-          width: 38,
-          height: 38,
-          borderRadius: 12,
-          backgroundColor: bg,
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 12,
-        }}
-      >
-        {icon}
-      </View>
-      <Text
-        style={{
-          fontSize: 22,
-          fontWeight: "800",
-          color: "#0F172A",
-          letterSpacing: -0.5,
-        }}
-      >
-        {value}
-      </Text>
-      <Text
-        style={{
-          fontSize: 11,
-          color: "#64748B",
-          fontWeight: "600",
-          marginTop: 2,
-          letterSpacing: 0.2,
-        }}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-// ─── Quick Action Button ───────────────────────────────────────
-
-function QuickAction({
-  icon,
-  label,
-  bg,
-  badge,
-  onPress,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  bg: string;
-  badge?: number;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.85}
-      style={{
-        alignItems: "center",
-        width: 80,
-        gap: 8,
-      }}
-    >
-      <View
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 18,
-          backgroundColor: bg,
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-        }}
-      >
-        {icon}
-        {badge ? (
-          <View
-            style={{
-              position: "absolute",
-              top: -4,
-              right: -4,
-              minWidth: 18,
-              height: 18,
-              paddingHorizontal: 5,
-              borderRadius: 9,
-              backgroundColor: "#EF4444",
-              borderWidth: 2,
-              borderColor: "#F8FAFC",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ fontSize: 10, fontWeight: "800", color: "#fff" }}>
-              {badge > 9 ? "9+" : badge}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-      <Text
-        style={{
-          fontSize: 11,
-          fontWeight: "700",
-          color: "#334155",
-          textAlign: "center",
-        }}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-// ─── Section Header ────────────────────────────────────────────
-
-function SectionHeader({
-  title,
-  actionLabel,
-  onAction,
-}: {
-  title: string;
-  actionLabel?: string;
-  onAction?: () => void;
-}) {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 20,
-        marginBottom: 14,
-      }}
-    >
-      <Text
-        style={{
-          fontSize: 18,
-          fontWeight: "800",
-          color: "#0F172A",
-          letterSpacing: -0.4,
-        }}
-      >
-        {title}
-      </Text>
-      {actionLabel && onAction ? (
-        <TouchableOpacity onPress={onAction} hitSlop={8}>
-          <Text style={{ fontSize: 13, color: "#2563EB", fontWeight: "700" }}>
-            {actionLabel}
-          </Text>
-        </TouchableOpacity>
-      ) : null}
-    </View>
-  );
-}
-
-// ─── Listing Insight Row ───────────────────────────────────────
-
-function ListingInsightRow({
-  property,
-  onPress,
-}: {
-  property: api.Property;
-  onPress: () => void;
-}) {
-  const photoCount = property.photos.length;
-  const hasIssues = !property.isAvailable || photoCount === 0;
-  const statusColor = property.isAvailable ? "#10B981" : "#EF4444";
-  const statusLabel = property.isAvailable ? "Active" : "Inactive";
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.9}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: "#fff",
-        borderRadius: 16,
-        padding: 14,
-        gap: 12,
-        borderWidth: 1,
-        borderColor: hasIssues ? "#FEE2E2" : "#F1F5F9",
-      }}
-    >
-      {/* Thumbnail */}
-      {property.photos.length > 0 ? (
-        <Image
-          source={{ uri: property.photos[0].url }}
-          style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: "#E2E8F0" }}
-        />
-      ) : (
-        <View
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 14,
-            backgroundColor: "#F1F5F9",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <House size={22} color="#94A3B8" weight="duotone" />
-        </View>
-      )}
-
-      {/* Info */}
-      <View style={{ flex: 1 }}>
-        <Text
-          numberOfLines={1}
-          style={{ fontSize: 14, fontWeight: "700", color: "#0F172A", letterSpacing: -0.2 }}
-        >
-          {property.name}
-        </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
-          <MapPin size={11} color="#94A3B8" weight="fill" />
-          <Text numberOfLines={1} style={{ fontSize: 11, color: "#64748B", flex: 1 }}>
-            {property.location}
-          </Text>
-        </View>
-        {/* Issue hints */}
-        <View style={{ flexDirection: "row", gap: 6, marginTop: 5 }}>
-          {photoCount === 0 ? (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 3,
-                backgroundColor: "#FEF3C7",
-                borderRadius: 6,
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-              }}
-            >
-              <Camera size={10} color="#D97706" weight="fill" />
-              <Text style={{ fontSize: 9, fontWeight: "700", color: "#D97706" }}>No photos</Text>
-            </View>
-          ) : null}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 3,
-              backgroundColor: property.isAvailable ? "#ECFDF5" : "#FEF2F2",
-              borderRadius: 6,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-            }}
-          >
-            <View
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: statusColor,
-              }}
-            />
-            <Text style={{ fontSize: 9, fontWeight: "700", color: statusColor }}>
-              {statusLabel}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Rent */}
-      <View style={{ alignItems: "flex-end" }}>
-        <Text style={{ fontSize: 16, fontWeight: "800", color: "#0F172A" }}>
-          ₹{property.rent.toLocaleString("en-IN")}
-        </Text>
-        <Text style={{ fontSize: 10, color: "#94A3B8", marginTop: 1 }}>/month</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-// ─── Tip Card ──────────────────────────────────────────────────
-
-function TipCard({
-  Icon,
-  title,
-  body,
-  gradient,
-}: {
-  Icon: React.ComponentType<{ size?: number; color?: string; weight?: any }>;
-  title: string;
-  body: string;
-  gradient: readonly [string, string, ...string[]];
-}) {
-  return (
-    <View
-      style={{
-        width: 230,
-        borderRadius: 20,
-        overflow: "hidden",
-      }}
-    >
-      <LinearGradient
-        colors={gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ padding: 18 }}
-      >
-        <View
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 14,
-            backgroundColor: "rgba(255,255,255,0.22)",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 14,
-          }}
-        >
-          <Icon size={20} color="#fff" weight="fill" />
-        </View>
-        <Text
-          style={{
-            fontSize: 15,
-            fontWeight: "800",
-            color: "#fff",
-            marginBottom: 6,
-            letterSpacing: -0.2,
-          }}
-        >
-          {title}
-        </Text>
-        <Text
-          style={{
-            fontSize: 12,
-            color: "rgba(255,255,255,0.88)",
-            lineHeight: 17,
-          }}
-        >
-          {body}
-        </Text>
-      </LinearGradient>
     </View>
   );
 }

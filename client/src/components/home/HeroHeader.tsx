@@ -6,7 +6,8 @@ import { router } from "expo-router";
 import { Bell } from "phosphor-react-native";
 import SearchBar from "./SearchBar";
 import { useInquiryUnread } from "@/src/hooks/useInquiryUnread";
-import { CITIES } from "@/src/data/constants";
+
+import * as api from "@/src/services/api";
 
 type Props = {
   onFilterPress: () => void;
@@ -19,7 +20,11 @@ const LINE_H = 18;
 
 // ─── Ticker: two layers animate in parallel ────────────────────────
 
-function CityTicker() {
+function CityTicker({ cities = [], }: {
+  cities?:
+  { name: string; count: number }[];
+}) {
+
   const [current, setCurrent] = useState(0);
   const anim = useRef(new Animated.Value(0)).current;
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -32,7 +37,7 @@ function CityTicker() {
         easing: Easing.bezier(0.4, 0, 0.2, 1),
         useNativeDriver: true,
       }).start(() => {
-        setCurrent((i) => (i + 1) % CITIES.length);
+        setCurrent((i) => (i + 1) % cities.length);
         anim.setValue(0);
         timeoutRef.current = setTimeout(tick, HOLD_MS);
       });
@@ -42,11 +47,12 @@ function CityTicker() {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [anim]);
+  }, [anim, cities.length]);
 
-  const next = (current + 1) % CITIES.length;
-  const c = CITIES[current];
-  const n = CITIES[next];
+  if (!cities.length) return null;
+  const next = (current + 1) % cities.length;
+  const c = cities[current];
+  const n = cities[next];
 
   // Outgoing: 0 → -LINE_H, fading out
   const outY = anim.interpolate({
@@ -118,7 +124,28 @@ function CityTicker() {
 export default function HeroHeader({ onFilterPress, activeFilterCount }: Props) {
   const { totalUnread } = useInquiryUnread();
   const hasUnread = totalUnread > 0;
+  const [cities, setCities] = useState<
+    { name: string; count: number }[]
+  >([]);
 
+  useEffect(() => {
+    const loadCityCounts = async () => {
+      try {
+        const counts = await api.getPropertyCityCounts();
+
+        const formatted = Object.entries(counts).map(([name, count]) => ({
+          name,
+          count,
+        }));
+
+        setCities(formatted);
+      } catch (err) {
+        console.log("Failed to load city counts", err);
+      }
+    };
+
+    loadCityCounts();
+  }, []);
   return (
     <LinearGradient
       colors={["#1D4ED8", "#60A5FA"]}
@@ -139,7 +166,7 @@ export default function HeroHeader({ onFilterPress, activeFilterCount }: Props) 
           }}
         >
           <View style={{ flex: 1, marginRight: 12 }}>
-            <CityTicker />
+            <CityTicker cities={cities} />
             <Text
               style={{
                 fontSize: 24,

@@ -114,7 +114,7 @@ export default function EditProfileScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
@@ -129,6 +129,7 @@ export default function EditProfileScreen() {
             style={inputStyle}
             maxLength={120}
             autoCapitalize="words"
+            returnKeyType="next"
           />
           {!nameValid && trimmedName.length > 0 ? (
             <Hint error>Name must be at least 2 characters</Hint>
@@ -148,6 +149,7 @@ export default function EditProfileScreen() {
             keyboardType="phone-pad"
             maxLength={20}
             autoComplete="tel"
+            returnKeyType="done"
           />
           {!phoneValid ? (
             <Hint error>Enter a valid 10-digit Indian mobile number</Hint>
@@ -173,7 +175,7 @@ export default function EditProfileScreen() {
           style={{
             paddingHorizontal: 20,
             paddingTop: 12,
-            paddingBottom: Platform.OS === "ios" ? 28 : 34,
+            paddingBottom: Platform.OS === "ios" ? 28 : 36,
             borderTopWidth: 1,
             borderTopColor: "#F1F5F9",
             backgroundColor: "#fff",
