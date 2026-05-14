@@ -7,7 +7,6 @@ import {
   Image,
   ImageSourcePropType,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 
 type CityFilter = {
   id: string;

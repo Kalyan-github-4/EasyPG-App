@@ -141,6 +141,34 @@ function parsePagination(query: Record<string, unknown>) {
 
 // ─── Routes ──────────────────────────────────────────────
 
+// GET /properties/city-counts — public city-wise listed property counts
+router.get("/city-counts", async (_req, res) => {
+  try {
+    const rows = await db
+      .select({
+        city: properties.city,
+        count: sql<number>`count(*)`,
+      })
+      .from(properties)
+      .where(eq(properties.isAvailable, true))
+      .groupBy(properties.city);
+
+    const counts = rows.reduce<Record<string, number>>((acc, row) => {
+      const key = row.city.trim().toLowerCase();
+      acc[key] = (acc[key] ?? 0) + (Number(row.count) || 0);
+      return acc;
+    }, {});
+
+    res.json({
+      success: true,
+      counts,
+    });
+  } catch (err) {
+    console.error("Get city counts error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch city counts" });
+  }
+});
+
 // GET /properties — public list (ALWAYS paginated)
 router.get("/", async (req, res) => {
   try {

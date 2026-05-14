@@ -11,9 +11,6 @@ function createTokenCache(): TokenCache {
     async getToken(key: string) {
       try {
         const item = await SecureStore.getItemAsync(key);
-        if (item) {
-          console.log(`[TokenCache] Found cached token for key: ${key.substring(0, 10)}...`);
-        }
         return item;
       } catch (error) {
         console.error("[TokenCache] getToken error:", error);

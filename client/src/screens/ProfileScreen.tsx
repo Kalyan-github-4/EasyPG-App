@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, Alert } from "react-native";
 import { useAuth, useClerk, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 import { useAppAuth } from "@/src/context/auth-context";
 import * as api from "@/src/services/api";
@@ -18,6 +19,12 @@ import {
   Divider,
 } from "@/src/components/profile/MenuPrimitives";
 
+type ProfileStat = {
+  value: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+};
+
 export default function ProfileScreen() {
   const { signOut } = useClerk();
   const { user: clerkUser } = useUser();
@@ -27,6 +34,11 @@ export default function ProfileScreen() {
 
   const [switching, setSwitching] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [stats, setStats] = useState<ProfileStat[]>([
+    { value: "0", label: "Saved", icon: "heart-outline" },
+    { value: "0", label: "Visited", icon: "eye-outline" },
+    { value: "0", label: "Reviews", icon: "star-outline" },
+  ]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -109,6 +121,52 @@ export default function ProfileScreen() {
       })
     : "New";
 
+  useEffect(() => {
+    let active = true;
+
+    const loadStats = async () => {
+      try {
+        const token = await getToken();
+        if (!token || !active) return;
+
+        const savedPromise = api.listSavedIds(token).catch(() => [] as string[]);
+        const visitedPromise = isHost
+          ? api.listHostBookings(token).catch(() => [] as api.BookingRequest[])
+          : api.listMyBookings(token).catch(() => [] as api.BookingRequest[]);
+        const reviewsPromise = isHost
+          ? api.listMyProperties(token).catch(() => [] as api.Property[])
+          : Promise.resolve([] as api.Property[]);
+
+        const [savedIds, visits, myProperties] = await Promise.all([
+          savedPromise,
+          visitedPromise,
+          reviewsPromise,
+        ]);
+
+        if (!active) return;
+
+        const reviewCount = myProperties.reduce(
+          (total, property) => total + property.reviewCount,
+          0
+        );
+
+        setStats([
+          { value: String(savedIds.length), label: "Saved", icon: "heart-outline" },
+          { value: String(visits.length), label: "Visited", icon: "eye-outline" },
+          { value: String(reviewCount), label: "Reviews", icon: "star-outline" },
+        ]);
+      } catch {
+        // Keep fallback values when stats can't be loaded.
+      }
+    };
+
+    loadStats();
+
+    return () => {
+      active = false;
+    };
+  }, [getToken, isHost]);
+
   return (
     <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
       <ScrollView
@@ -125,6 +183,7 @@ export default function ProfileScreen() {
           memberSince={memberSince}
           uploadingAvatar={uploadingAvatar}
           onAvatarPress={handleChangeAvatar}
+          stats={stats}
         />
 
         {!isHost && (

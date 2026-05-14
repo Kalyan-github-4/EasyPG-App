@@ -44,30 +44,25 @@ export const CITIES = [
     id: "1",
     name: "Jhargram",
     image: { uri: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTvd32NVW-vR1XKiBlyi6GMWh2DRgNgIVr1iQ&s" },
-    count: 124,
   },
   {
     id: "2",
     name: "Medinipur",
     image: { uri: "https://cdn.s3waas.gov.in/s319ca14e7ea6328a42e0eb13d585e4c22/uploads/bfi_thumb/2022113037-1-pygwi3cupdx024gkzqfb79kdb5nrrtlcyjedyui0o0.jpg" },
-    count: 98,
   },
   {
     id: "3",
     name: "Kharagpur",
     image: { uri: "https://images.unsplash.com/photo-1620496009285-ac853df7b9b6?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8a2hhcmFncHVyfGVufDB8fDB8fHww" },
-    count: 87,
   },
   {
     id: "4",
     name: "Hyderabad",
     image: { uri: "https://images.unsplash.com/photo-1567157577867-05ccb1388e66?w=200&q=80" },
-    count: 63,
   },
   {
     id: "5",
     name: "Chennai",
     image: { uri: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=200&q=80" },
-    count: 51,
   },
 ];

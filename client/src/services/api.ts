@@ -259,6 +259,11 @@ interface PropertyListResponse {
   };
 }
 
+interface PropertyCityCountResponse {
+  success: boolean;
+  counts: Record<string, number>;
+}
+
 interface PropertyResponse {
   success: boolean;
   property: Property;
@@ -317,6 +322,12 @@ export async function listPropertiesPage(
       nextOffset: null,
     },
   };
+}
+
+/** Public city-wise count of currently listed (available) properties */
+export async function getPropertyCityCounts(): Promise<Record<string, number>> {
+  const res = await request<PropertyCityCountResponse>("/properties/city-counts");
+  return res.counts;
 }
 
 /** Host's own properties */

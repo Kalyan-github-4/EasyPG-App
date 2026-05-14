@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, ScrollView } from "react-native";
 import { router } from "expo-router";
+import { useAuth } from "@clerk/clerk-expo";
 import HeroHeader from "@/src/components/home/HeroHeader";
 import CircularCityFilters from "@/src/components/home/FilterChips";
 import SectionHeader from "@/src/components/home/SectionHeader";
@@ -82,9 +83,13 @@ const HOME_SECTIONS: HomeSection[] = [
 
 // ─── Helpers ───────────────────────────────────────────────────────
 
+function normalizeCityName(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 function matchesCity(p: api.Property, cityName: string): boolean {
   if (!cityName) return true;
-  return p.city === cityName;
+  return normalizeCityName(p.city) === normalizeCityName(cityName);
 }
 
 function applyFilters(
@@ -110,8 +115,10 @@ function applyFilters(
 
 export default function GuestHome({ firstName: _firstName }: Props) {
   const PAGE_SIZE = 20;
+  const { getToken } = useAuth();
   const [saved, setSaved] = useState<string[]>([]);
-  const [selectedCity, setSelectedCity] = useState<string>("1");
+  const [cityCounts, setCityCounts] = useState<Record<string, number>>({});
+  const [selectedCity, setSelectedCity] = useState<string>(cityCounts ? Object.keys(cityCounts)[0] : ""); // Default to city with most listings, or empty if counts not loaded
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
 
@@ -121,6 +128,21 @@ export default function GuestHome({ firstName: _firstName }: Props) {
   const [nextOffset, setNextOffset] = useState<number | null>(0);
   const [hasMore, setHasMore] = useState(true);
   const isFetchingRef = useRef(false);
+
+  // ─── Load user's existing saved IDs on mount ────────────
+  useEffect(() => {
+    const fetchSavedIds = async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const ids = await api.listSavedIds(token);
+        setSaved(ids);
+      } catch {
+        // Non-critical — hearts just start unchecked
+      }
+    };
+    fetchSavedIds();
+  }, [getToken]);
 
   const fetchPage = useCallback(async (offset: number, reset: boolean) => {
     if (isFetchingRef.current) return;
@@ -153,11 +175,21 @@ export default function GuestHome({ firstName: _firstName }: Props) {
     }
   }, []);
 
+  const fetchCityCounts = useCallback(async () => {
+    try {
+      const counts = await api.getPropertyCityCounts();
+      setCityCounts(counts);
+    } catch {
+      // Non-blocking fallback: UI can render without counts
+    }
+  }, []);
+
   const loadInitial = useCallback(() => {
     setNextOffset(0);
     setHasMore(true);
     void fetchPage(0, true);
-  }, [fetchPage]);
+    void fetchCityCounts();
+  }, [fetchCityCounts, fetchPage]);
 
   const loadMore = useCallback(() => {
     if (loading || loadingMore || !hasMore || nextOffset == null) return;
@@ -188,10 +220,28 @@ export default function GuestHome({ firstName: _firstName }: Props) {
     [hasMore, loadMore, loading, loadingMore, nextOffset]
   );
 
-  const toggleSave = (id: string) =>
+  // ─── Toggle save — optimistic UI + real API call ─────────
+  const toggleSave = useCallback(async (id: string) => {
+    const isSaved = saved.includes(id);
+    // Optimistic update
     setSaved((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      isSaved ? prev.filter((x) => x !== id) : [...prev, id]
     );
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      if (isSaved) {
+        await api.unsaveProperty(token, id);
+      } else {
+        await api.saveProperty(token, id);
+      }
+    } catch {
+      // Revert optimistic update on failure
+      setSaved((prev) =>
+        isSaved ? [...prev, id] : prev.filter((x) => x !== id)
+      );
+    }
+  }, [saved, getToken]);
 
   const activeFilterCount = countActiveFilters(filters);
   const hasActiveFilters = countActiveFilters(filters) > 0;
@@ -199,6 +249,30 @@ export default function GuestHome({ firstName: _firstName }: Props) {
   const selectedCityName = useMemo(
     () => CITIES.find((c) => c.id === selectedCity)?.name || "",
     [selectedCity]
+  );
+
+  const localCityCounts = useMemo(
+    () =>
+      properties.reduce<Record<string, number>>((acc, property) => {
+        const key = normalizeCityName(property.city);
+        acc[key] = (acc[key] ?? 0) + 1;
+        return acc;
+      }, {}),
+    [properties]
+  );
+
+  const citiesWithCounts = useMemo(
+    () =>
+      [...CITIES].map((city) => ({
+        ...city,
+        count: Math.max(
+          cityCounts[normalizeCityName(city.name)] ?? 0,
+          localCityCounts[normalizeCityName(city.name)] ?? 0
+        ),
+      }))
+        .filter((c) => c.count > 0)
+        .sort((a, b) => (b.count ?? 0) - (a.count ?? 0)),
+    [cityCounts, localCityCounts]
   );
 
   // Narrow pool to the selected city first
@@ -236,7 +310,7 @@ export default function GuestHome({ firstName: _firstName }: Props) {
 
         <View style={{ marginTop: 20, marginBottom: 4 }}>
           <CircularCityFilters
-            cities={CITIES}
+            cities={citiesWithCounts}
             selectedCityId={selectedCity}
             onSelectCity={setSelectedCity}
           />
@@ -257,9 +331,8 @@ export default function GuestHome({ firstName: _firstName }: Props) {
           <View style={{ marginTop: 20 }}>
             <SectionHeader
               title="Search Results"
-              subtitle={`${filteredProperties.length} match${
-                filteredProperties.length === 1 ? "" : "es"
-              } in ${selectedCityName || "your area"}`}
+              subtitle={`${filteredProperties.length} match${filteredProperties.length === 1 ? "" : "es"
+                } in ${selectedCityName || "your area"}`}
               icon="search-outline"
             />
             {filteredProperties.length > 0 ? (

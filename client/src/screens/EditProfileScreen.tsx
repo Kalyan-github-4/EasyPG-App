@@ -173,7 +173,7 @@ export default function EditProfileScreen() {
           style={{
             paddingHorizontal: 20,
             paddingTop: 12,
-            paddingBottom: Platform.OS === "ios" ? 28 : 20,
+            paddingBottom: Platform.OS === "ios" ? 28 : 34,
             borderTopWidth: 1,
             borderTopColor: "#F1F5F9",
             backgroundColor: "#fff",

@@ -39,7 +39,11 @@ export default function PropertyStickyActions({
       }
 
       // Remove spaces, +, -, etc.
-      const cleanPhone = phone.replace(/[^\d]/g, "");
+      let cleanPhone = phone.replace(/[^\d]/g, "");
+
+      if (cleanPhone.length === 10) {
+        cleanPhone = `91${cleanPhone}`;
+      }
 
       const message =
         `Hi, I'm interested in your property` +
@@ -74,11 +78,11 @@ export default function PropertyStickyActions({
           <TouchableOpacity
             onPress={handleWhatsApp}
             activeOpacity={0.85}
-            className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-3.5"
+            className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl border-2 border-[#1FA855] py-3.5"
           >
-            <ChatCircleIcon size={18} color="#fff" weight="bold" />
+            <ChatCircleIcon size={18} color="#1FA855" weight="bold" />
 
-            <Text className="text-[15px] font-bold text-white">
+            <Text className="text-[15px] font-bold text-[#1FA855]">
               WhatsApp
             </Text>
           </TouchableOpacity>
@@ -89,9 +93,8 @@ export default function PropertyStickyActions({
           onPress={onBook}
           activeOpacity={0.85}
           disabled={!isAvailable}
-          className={`flex-[1.3] flex-row items-center justify-center gap-2 rounded-2xl py-3.5 ${
-            isAvailable ? "bg-blue-600" : "bg-slate-300"
-          }`}
+          className={`flex-row items-center justify-center gap-2 rounded-2xl py-3.5 ${phone ? "flex-[1.3]" : "flex-1"
+            } ${isAvailable ? "bg-blue-600" : "bg-slate-300"}`}
         >
           <CalendarCheckIcon size={18} color="#fff" weight="bold" />
 

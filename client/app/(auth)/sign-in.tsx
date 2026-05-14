@@ -68,8 +68,33 @@ export default function SignInScreen() {
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
         router.replace("/(app)/(tabs)");
+      } else if (result.status === "needs_first_factor") {
+        // Clerk requires an explicit first-factor attempt (some configurations)
+        const factorResult = await signIn.attemptFirstFactor({
+          strategy: "password",
+          password,
+        });
+        if (factorResult.status === "complete") {
+          await setActive({ session: factorResult.createdSessionId });
+          router.replace("/(app)/(tabs)");
+        } else if (factorResult.status === "needs_second_factor") {
+          setError(
+            "Two-factor authentication is required for this account. Please use the Clerk dashboard to sign in."
+          );
+        } else {
+          setError(
+            `Sign-in incomplete (status: ${factorResult.status}). Please contact support.`
+          );
+        }
+      } else if (result.status === "needs_second_factor") {
+        setError(
+          "Two-factor authentication is required. Please sign in via web or contact support."
+        );
       } else {
-        setError("Additional verification required. Please try again.");
+        console.warn("Clerk sign-in unexpected status:", result.status, result);
+        setError(
+          `Unexpected sign-in status (${result.status}). Please try again.`
+        );
       }
     } catch (err: any) {
       const message =
@@ -81,6 +106,7 @@ export default function SignInScreen() {
       setIsSubmitting(false);
     }
   }, [isLoaded, email, password, signIn, setActive, router]);
+
 
   // ─── Google OAuth ─────────────────────────────────────
 

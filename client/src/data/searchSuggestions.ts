@@ -177,15 +177,19 @@ function detectIntent(raw: string): {
   const text = raw.trim().toLowerCase();
 
   // Match property type + preposition patterns
-  const patterns: Array<{ re: RegExp; kind: "at" | "in" | "near"; prefix: string }> = [
-    { re: /^(mess|hostel|pg)\s+near\s*(.*)$/i, kind: "near", prefix: "" },
-    { re: /^(mess|hostel|pg)\s+at\s*(.*)$/i, kind: "at", prefix: "" },
-    { re: /^(mess|hostel|pg)\s+in\s*(.*)$/i, kind: "in", prefix: "" },
-    { re: /^(girls?|boys?)\s+(mess|hostel|pg)\s+(?:near|at|in)\s*(.*)$/i, kind: "near", prefix: "" },
-    { re: /^near\s+(.*)$/i, kind: "near", prefix: "" },
-    { re: /^at\s+(.*)$/i, kind: "at", prefix: "" },
-    { re: /^in\s+(.*)$/i, kind: "in", prefix: "" },
-  ];
+  const patterns: {
+    re: RegExp;
+    kind: "at" | "in" | "near";
+    prefix: string;
+  }[] = [
+      { re: /^(mess|hostel|pg)\s+near\s*(.*)$/i, kind: "near", prefix: "" },
+      { re: /^(mess|hostel|pg)\s+at\s*(.*)$/i, kind: "at", prefix: "" },
+      { re: /^(mess|hostel|pg)\s+in\s*(.*)$/i, kind: "in", prefix: "" },
+      { re: /^(girls?|boys?)\s+(mess|hostel|pg)\s+(?:near|at|in)\s*(.*)$/i, kind: "near", prefix: "" },
+      { re: /^near\s+(.*)$/i, kind: "near", prefix: "" },
+      { re: /^at\s+(.*)$/i, kind: "at", prefix: "" },
+      { re: /^in\s+(.*)$/i, kind: "in", prefix: "" },
+    ];
 
   for (const p of patterns) {
     const m = text.match(p.re);
@@ -198,12 +202,12 @@ function detectIntent(raw: string): {
   return { template: null, prefix: "", tail: text };
 }
 
-function prepositionLabel(template: "at" | "in" | "near", prefix?: string): string {
-  const typeLabel = prefix ? `${prefix} ` : "PG ";
-  if (template === "near") return `${typeLabel}near`;
-  if (template === "at") return `${typeLabel}at`;
-  return `${typeLabel}in`;
-}
+// function prepositionLabel(template: "at" | "in" | "near", prefix?: string): string {
+//   const typeLabel = prefix ? `${prefix} ` : "PG ";
+//   if (template === "near") return `${typeLabel}near`;
+//   if (template === "at") return `${typeLabel}at`;
+//   return `${typeLabel}in`;
+// }
 
 /**
  * Produces typeahead suggestions for a partial query.

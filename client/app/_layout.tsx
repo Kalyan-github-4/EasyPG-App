@@ -22,6 +22,10 @@ if (!CLERK_PUBLISHABLE_KEY) {
  * Navigation guard: redirects based on Clerk auth state.
  * - Not signed in → (auth)
  * - Signed in → (app)
+ *
+ * NOTE: segments is [] on the very first render before the router
+ * has mounted. We skip redirect logic until segments is non-empty
+ * to avoid a flash-to-sign-in on cold start.
  */
 function NavigationGuard({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoaded } = useAuth();
@@ -29,15 +33,14 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoaded) return;
+    // Not ready yet — wait for Clerk and for the router to determine the segment
+    if (!isLoaded || segments[0] === undefined) return;
 
     const inAuthGroup = segments[0] === "(auth)";
 
     if (!isSignedIn && !inAuthGroup) {
-      // Not signed in, redirect to sign-in
       router.replace("/(auth)/sign-in");
     } else if (isSignedIn && inAuthGroup) {
-      // Signed in but still on auth screens, redirect to app
       router.replace("/(app)/(tabs)");
     }
   }, [isSignedIn, isLoaded, segments]);

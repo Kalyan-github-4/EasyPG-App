@@ -187,20 +187,20 @@ export default function PropertyDetailScreen() {
     );
   };
 
-  const handleMessage = () => {
-    if (!isGuest) {
-      Alert.alert(
-        "Switch to guest",
-        "Only guests can message hosts. Switch to guest view from your profile."
-      );
-      return;
-    }
-    if (isHostOfThis) {
-      Alert.alert("That's your property", "You can't message yourself.");
-      return;
-    }
-    setShowInquirySheet(true);
-  };
+  // const handleMessage = () => {
+  //   if (!isGuest) {
+  //     Alert.alert(
+  //       "Switch to guest",
+  //       "Only guests can message hosts. Switch to guest view from your profile."
+  //     );
+  //     return;
+  //   }
+  //   if (isHostOfThis) {
+  //     Alert.alert("That's your property", "You can't message yourself.");
+  //     return;
+  //   }
+  //   setShowInquirySheet(true);
+  // };
 
   const handleBook = () => {
     if (!isGuest) {
@@ -346,10 +346,9 @@ export default function PropertyDetailScreen() {
 
       <PropertyStickyActions
         isHostOfThis={isHostOfThis}
-        hasPhone={Boolean(property.host?.phone)}
+        phone={(property.host?.phone)}
         isAvailable={property.isAvailable}
-        onCall={handleCall}
-        onMessage={handleMessage}
+        propertyName={property.name}
         onBook={handleBook}
       />
 

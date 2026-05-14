@@ -12,11 +12,13 @@ import {
   Keyboard,
   StyleSheet,
 } from "react-native";
-import { useSignUp, useSSO } from "@clerk/clerk-expo";
+import { useSignUp, useSSO, useAuth } from "@clerk/clerk-expo";
 import { useRouter, Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
+import * as api from "../../src/services/api";
+
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -36,6 +38,7 @@ const ERROR_TEXT = "#DC2626";
 export default function SignUpScreen() {
   const { signUp, setActive, isLoaded } = useSignUp();
   const { startSSOFlow } = useSSO();
+  const { getToken } = useAuth();
   const router = useRouter();
 
   const [firstName, setFirstName] = useState("");
@@ -68,12 +71,38 @@ export default function SignUpScreen() {
     setIsSubmitting(true);
     setError("");
     try {
-      await signUp.create({
-        firstName: firstName.trim() || undefined,
-        lastName: lastName.trim() || undefined,
-        emailAddress: email.trim(),
-        password,
-      });
+      try {
+        await signUp.create({
+          firstName: firstName.trim() || undefined,
+          lastName: lastName.trim() || undefined,
+          emailAddress: email.trim(),
+          password,
+        });
+      } catch (createErr: any) {
+        const errStr = JSON.stringify(createErr);
+        if (
+          errStr.includes("first_name") ||
+          errStr.includes("last_name") ||
+          errStr.includes("not a valid parameter")
+        ) {
+          // Fallback: create with email and password only if Name fields are disabled/optional in Clerk instance
+          await signUp.create({
+            emailAddress: email.trim(),
+            password,
+          });
+          // Attempt update separately if supported
+          try {
+            await signUp.update({
+              firstName: firstName.trim() || undefined,
+              lastName: lastName.trim() || undefined,
+            });
+          } catch {
+            // gracefully ignore if instance doesn't accept name updates
+          }
+        } else {
+          throw createErr;
+        }
+      }
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setPendingVerification(true);
     } catch (err: any) {
@@ -87,6 +116,7 @@ export default function SignUpScreen() {
     }
   }, [isLoaded, firstName, lastName, email, password, signUp]);
 
+
   // ─── Verify OTP ───────────────────────────────────────
 
   const handleVerify = useCallback(async () => {
@@ -99,8 +129,23 @@ export default function SignUpScreen() {
         code: verificationCode,
       });
 
+      const syncNameToBackend = async () => {
+        const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+        if (fullName) {
+          try {
+            const token = await getToken();
+            if (token) {
+              await api.updateProfile(token, { name: fullName });
+            }
+          } catch (e) {
+            console.warn("Failed to sync full name to backend:", e);
+          }
+        }
+      };
+
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
+        await syncNameToBackend();
         router.replace("/(app)/(tabs)");
       } else if (result.status === "missing_requirements") {
         const missingFields = result.missingFields ?? [];
@@ -114,6 +159,7 @@ export default function SignUpScreen() {
 
           if (updated.status === "complete") {
             await setActive({ session: updated.createdSessionId });
+            await syncNameToBackend();
             router.replace("/(app)/(tabs)");
           } else {
             setError(`Setup incomplete. Missing: ${updated.missingFields?.join(", ") ?? "unknown"}`);
@@ -133,7 +179,7 @@ export default function SignUpScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [isLoaded, verificationCode, signUp, setActive, router, email]);
+  }, [isLoaded, verificationCode, signUp, setActive, router, email, firstName, lastName, getToken]);
 
   // ─── Google OAuth ─────────────────────────────────────
 

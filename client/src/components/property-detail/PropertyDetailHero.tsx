@@ -9,9 +9,7 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { ArrowLeftIcon, HeartIcon, HouseIcon } from "phosphor-react-native";
-
+import { ArrowLeftIcon, HeartIcon, HouseIcon, ShareNetworkIcon } from "phosphor-react-native";
 import type { Property } from "@/src/services/api";
 
 const { width } = Dimensions.get("window");
@@ -106,7 +104,7 @@ function HeaderActionButtons({
         style={{ top: topInset + 12 }}
         className="absolute items-center justify-center w-10 h-10 rounded-full left-4 bg-black/30"
       >
-        <ArrowLeftIcon size={20} color="#fff" weight="bold" />
+        <ArrowLeftIcon size={20} color="#fff" />
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -129,7 +127,7 @@ function HeaderActionButtons({
         style={{ top: topInset + 12 }}
         className="absolute items-center justify-center w-10 h-10 rounded-full right-4 bg-black/30"
       >
-        <Ionicons name="share-social-outline" size={20} color="#fff" />
+        <ShareNetworkIcon size={20} color="#fff" />
       </TouchableOpacity>
     </>
   );
