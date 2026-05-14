@@ -42,8 +42,8 @@ export default function TabLayout() {
           borderTopWidth: 1,
           borderTopColor: "#E5E7EB",
           height: 60 + insets.bottom,
-          paddingTop: 8,
-          paddingBottom: insets.bottom + 8,
+          paddingTop: 6,
+          paddingBottom: insets.bottom + 2,
           ...Platform.select({ android: { elevation: 8 } }),
         },
         tabBarItemStyle: {
