@@ -38,7 +38,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      setIsLoading(true);
       setError(null);
 
       // getToken() refreshes the JWT automatically if it's near expiry.

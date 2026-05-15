@@ -216,6 +216,7 @@ export interface Property {
   name: string;
   description: string | null;
   city: string;
+  pincode: string | null;
   location: string;
   latitude: number | null;
   longitude: number | null;
@@ -237,6 +238,7 @@ export interface PropertyInput {
   name: string;
   description?: string;
   city: string;
+  pincode: string;
   location: string;
   latitude?: number;
   longitude?: number;
