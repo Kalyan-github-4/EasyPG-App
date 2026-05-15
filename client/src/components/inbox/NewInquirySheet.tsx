@@ -299,9 +299,9 @@ function PropertyPickerStage({
                   justifyContent: "center",
                 }}
               >
-                {item.photos[0]?.url ? (
+                {item.photos?.[0]?.url ? (
                   <Image
-                    source={{ uri: item.photos[0].url }}
+                    source={{ uri: item.photos?.[0]?.url }}
                     style={{ width: "100%", height: "100%" }}
                   />
                 ) : (
@@ -403,9 +403,9 @@ function ComposerStage({
             justifyContent: "center",
           }}
         >
-          {property.photos[0]?.url ? (
+          {property.photos?.[0]?.url ? (
             <Image
-              source={{ uri: property.photos[0].url }}
+              source={{ uri: property.photos?.[0]?.url }}
               style={{ width: "100%", height: "100%" }}
             />
           ) : (

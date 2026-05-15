@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { useAuth, useUser } from "@clerk/clerk-expo";
+import { View, ActivityIndicator, Image } from "react-native";
 import * as api from "../services/api";
 
 // ─── Types ───────────────────────────────────────────────
@@ -80,7 +81,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ dbUser, isLoading, refreshUser, error }}>
-      {children}
+      {isLoading ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF", gap: 24 }}>
+          <Image
+            source={require("../../assets/images/logo.png")}
+            style={{ width: 72, height: 72 }}
+            resizeMode="contain"
+          />
+          <ActivityIndicator size="large" color="#2563EB" />
+        </View>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }

@@ -146,7 +146,6 @@ export default function SignUpScreen() {
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
         await syncNameToBackend();
-        router.replace("/(app)/(tabs)");
       } else if (result.status === "missing_requirements") {
         const missingFields = result.missingFields ?? [];
 
@@ -160,7 +159,6 @@ export default function SignUpScreen() {
           if (updated.status === "complete") {
             await setActive({ session: updated.createdSessionId });
             await syncNameToBackend();
-            router.replace("/(app)/(tabs)");
           } else {
             setError(`Setup incomplete. Missing: ${updated.missingFields?.join(", ") ?? "unknown"}`);
           }
@@ -193,7 +191,6 @@ export default function SignUpScreen() {
       });
       if (createdSessionId) {
         await ssoSetActive!({ session: createdSessionId });
-        router.replace("/(app)/(tabs)");
       }
     } catch {
       setError("Google sign-up failed. Please try again.");
@@ -214,7 +211,6 @@ export default function SignUpScreen() {
       });
       if (createdSessionId) {
         await ssoSetActive!({ session: createdSessionId });
-        router.replace("/(app)/(tabs)");
       }
     } catch {
       setError("Apple sign-up failed. Please try again.");

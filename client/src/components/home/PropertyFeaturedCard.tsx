@@ -19,7 +19,13 @@ export default function PropertyFeaturedCard({
   onSave,
   onPress,
 }: Props) {
-  const cover = property.photos[0]?.url;
+
+  if (!property) return null;
+
+  const cover =
+    Array.isArray(property?.photos) && property.photos.length > 0
+      ? property.photos[0].url
+      : null;
 
   return (
     <TouchableOpacity
@@ -92,7 +98,7 @@ export default function PropertyFeaturedCard({
         <TouchableOpacity
           onPress={(e) => {
             e.stopPropagation?.();
-            if(onSave) onSave();
+            if (onSave) onSave();
           }}
           hitSlop={8}
           style={{
@@ -143,10 +149,10 @@ export default function PropertyFeaturedCard({
               flexShrink: 1,
             }}
           >
-            {property.name}
+            {property?.name}
           </Text>
 
-          {property.rating > 0 && (
+          {property?.rating > 0 && (
             <View
               style={{
                 flexDirection: "row",
@@ -156,7 +162,7 @@ export default function PropertyFeaturedCard({
             >
               <Star size={10} color="#FBBF24" weight="fill" />
               <Text style={{ fontSize: 11, fontWeight: "800", color: "#fff" }}>
-                {property.rating.toFixed(1)}
+                {Number(property?.rating || 0).toFixed(1)}
               </Text>
             </View>
           )}
@@ -187,11 +193,11 @@ export default function PropertyFeaturedCard({
                 fontWeight: "500",
               }}
             >
-              {property.location}
+              {property?.location}
             </Text>
           </View>
           <Text style={{ color: "#fff", fontSize: 16, fontWeight: "900" }}>
-            ₹{property.rent.toLocaleString("en-IN")}
+            ₹{property?.rent?.toLocaleString("en-IN")}
             <Text
               style={{
                 color: "rgba(255,255,255,0.55)",

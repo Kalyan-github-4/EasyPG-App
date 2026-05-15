@@ -10,7 +10,7 @@ type Props = {
 };
 
 export default function StepReview({ state, dispatch }: Props) {
-  const cover = state.photos[0];
+  const cover = state.photos?.[0];
   const rent = state.rent ? Number(state.rent).toLocaleString("en-IN") : "";
 
   return (

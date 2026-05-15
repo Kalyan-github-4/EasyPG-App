@@ -118,7 +118,7 @@ export default function GuestHome({ firstName: _firstName }: Props) {
   const { getToken } = useAuth();
   const [saved, setSaved] = useState<string[]>([]);
   const [cityCounts, setCityCounts] = useState<Record<string, number>>({});
-  const [selectedCity, setSelectedCity] = useState<string>(cityCounts ? Object.keys(cityCounts)[0] : ""); // Default to city with most listings, or empty if counts not loaded
+  const [selectedCity, setSelectedCity] = useState<string>("");
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
 
@@ -348,8 +348,8 @@ export default function GuestHome({ firstName: _firstName }: Props) {
                   <PropertyFeaturedCard
                     key={p.id}
                     property={p}
-                    saved={saved.includes(p.id)}
-                    onSave={() => toggleSave(p.id)}
+                    saved={saved?.includes(p.id ?? "unknown")}
+                    onSave={() => p?.id && toggleSave(p.id)}
                   />
                 ))}
               </ScrollView>
@@ -384,10 +384,10 @@ export default function GuestHome({ firstName: _firstName }: Props) {
               >
                 {section.items.map((p) => (
                   <PropertyFeaturedCard
-                    key={p.id}
+                    key={p?.id ?? Math.random().toString()}
                     property={p}
-                    saved={saved.includes(p.id)}
-                    onSave={() => toggleSave(p.id)}
+                    saved={saved.includes(p?.id ?? "unknown")}
+                    onSave={() => p?.id && toggleSave(p.id)}
                   />
                 ))}
               </ScrollView>

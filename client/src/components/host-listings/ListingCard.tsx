@@ -10,9 +10,9 @@ type Props = {
 };
 
 export default function ListingCard({ property, onPress, onMore }: Props) {
-  const cover = property.photos[0]?.url;
+  const cover = property.photos?.[0]?.url;
   const rent = property.rent.toLocaleString("en-IN");
-  const photoCount = property.photos.length;
+  const photoCount = property.photos?.length ?? 0;
 
   return (
     <TouchableOpacity

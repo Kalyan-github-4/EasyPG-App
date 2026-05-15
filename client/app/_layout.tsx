@@ -4,6 +4,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { ActivityIndicator, Image, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 
 import { tokenCache } from "@/src/lib/clerk-token-cache";
@@ -43,7 +44,7 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
     } else if (isSignedIn && inAuthGroup) {
       router.replace("/(app)/(tabs)");
     }
-  }, [isSignedIn, isLoaded, segments]);
+  }, [isSignedIn, isLoaded, segments, router]);
 
   if (!isLoaded) {
     return (
@@ -76,22 +77,24 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-      <ClerkLoaded>
-        <ThemeProvider value={DefaultTheme}>
-          <NavigationGuard>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                animation: "fade",
-              }}
-            >
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(app)" />
-            </Stack>
-          </NavigationGuard>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </ClerkLoaded>
+      <SafeAreaProvider>
+        <ClerkLoaded>
+          <ThemeProvider value={DefaultTheme}>
+            <NavigationGuard>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  animation: "fade",
+                }}
+              >
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(app)" />
+              </Stack>
+            </NavigationGuard>
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </ClerkLoaded>
+      </SafeAreaProvider>
     </ClerkProvider>
   );
 }

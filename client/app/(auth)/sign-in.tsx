@@ -38,8 +38,11 @@ export default function SignInScreen() {
   const { startSSOFlow } = useSSO();
   const router = useRouter();
 
+  const [stage, setStage] = useState<"credentials" | "mfa">("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaStrategy, setMfaStrategy] = useState<"totp" | "phone_code" | "backup_code">("totp");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -67,7 +70,6 @@ export default function SignInScreen() {
       });
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        router.replace("/(app)/(tabs)");
       } else if (result.status === "needs_first_factor") {
         // Clerk requires an explicit first-factor attempt (some configurations)
         const factorResult = await signIn.attemptFirstFactor({
@@ -76,20 +78,33 @@ export default function SignInScreen() {
         });
         if (factorResult.status === "complete") {
           await setActive({ session: factorResult.createdSessionId });
-          router.replace("/(app)/(tabs)");
         } else if (factorResult.status === "needs_second_factor") {
-          setError(
-            "Two-factor authentication is required for this account. Please use the Clerk dashboard to sign in."
+          setMfaStrategy(
+            factorResult.supportedSecondFactors?.find((factor) => factor.strategy === "totp")?.strategy === "totp"
+              ? "totp"
+              : factorResult.supportedSecondFactors?.find((factor) => factor.strategy === "phone_code")?.strategy === "phone_code"
+                ? "phone_code"
+                : "backup_code"
           );
+          setMfaCode("");
+          setStage("mfa");
+          setError("Two-factor authentication is required for this account. Enter your verification code to continue.");
         } else {
           setError(
             `Sign-in incomplete (status: ${factorResult.status}). Please contact support.`
           );
         }
       } else if (result.status === "needs_second_factor") {
-        setError(
-          "Two-factor authentication is required. Please sign in via web or contact support."
+        setMfaStrategy(
+          result.supportedSecondFactors?.find((factor) => factor.strategy === "totp")?.strategy === "totp"
+            ? "totp"
+            : result.supportedSecondFactors?.find((factor) => factor.strategy === "phone_code")?.strategy === "phone_code"
+              ? "phone_code"
+              : "backup_code"
         );
+        setMfaCode("");
+        setStage("mfa");
+        setError("Two-factor authentication is required for this account. Enter your verification code to continue.");
       } else {
         console.warn("Clerk sign-in unexpected status:", result.status, result);
         setError(
@@ -107,6 +122,38 @@ export default function SignInScreen() {
     }
   }, [isLoaded, email, password, signIn, setActive, router]);
 
+  const handleSecondFactor = useCallback(async () => {
+    Keyboard.dismiss();
+    if (!isLoaded) return;
+    if (!mfaCode.trim()) {
+      setError("Please enter your verification code");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError("");
+    try {
+      const result = await signIn.attemptSecondFactor({
+        strategy: mfaStrategy,
+        code: mfaCode.trim(),
+      });
+
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+      } else {
+        setError(`Verification incomplete (status: ${result.status}). Please try again.`);
+      }
+    } catch (err: any) {
+      const message =
+        err.errors?.[0]?.longMessage ||
+        err.errors?.[0]?.message ||
+        "Invalid verification code.";
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [isLoaded, mfaCode, mfaStrategy, signIn, setActive, router]);
+
 
   // ─── Google OAuth ─────────────────────────────────────
 
@@ -120,9 +167,8 @@ export default function SignInScreen() {
       });
       if (createdSessionId) {
         await ssoSetActive!({ session: createdSessionId });
-        router.replace("/(app)/(tabs)");
       }
-    } catch (err: any) {
+    } catch {
       setError("Google sign-in failed. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -141,9 +187,8 @@ export default function SignInScreen() {
       });
       if (createdSessionId) {
         await ssoSetActive!({ session: createdSessionId });
-        router.replace("/(app)/(tabs)");
       }
-    } catch (err: any) {
+    } catch {
       setError("Apple sign-in failed. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -181,7 +226,9 @@ export default function SignInScreen() {
             {/* ── Form ────────────────────────────────────── */}
             <View style={s.formSection}>
               <Text style={s.heading}>Welcome back</Text>
-              <Text style={s.subheading}>Sign in to your account</Text>
+              <Text style={s.subheading}>
+                {stage === "mfa" ? "Enter your verification code" : "Sign in to your account"}
+              </Text>
 
               {/* Error */}
               {error ? (
@@ -191,109 +238,162 @@ export default function SignInScreen() {
                 </View>
               ) : null}
 
-              {/* Email */}
-              <View style={s.fieldGroup}>
-                <Text style={s.label}>Email</Text>
-                <View
-                  style={[
-                    s.inputRow,
-                    emailFocused && s.inputRowFocused,
-                  ]}
-                >
-                  <Ionicons
-                    name="mail-outline"
-                    size={18}
-                    color={emailFocused ? BRAND : TEXT_MUTED}
-                  />
-                  <TextInput
-                    style={s.input}
-                    placeholder="your@email.com"
-                    placeholderTextColor={TEXT_MUTED}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    returnKeyType="next"
-                    value={email}
-                    onChangeText={(t) => { setEmail(t); setError(""); }}
-                    onFocus={() => setEmailFocused(true)}
-                    onBlur={() => setEmailFocused(false)}
-                    onSubmitEditing={() => passwordRef.current?.focus()}
-                    editable={!isSubmitting}
-                  />
-                </View>
-              </View>
+              {stage === "credentials" ? (
+                <>
+                  {/* Email */}
+                  <View style={s.fieldGroup}>
+                    <Text style={s.label}>Email</Text>
+                    <View
+                      style={[
+                        s.inputRow,
+                        emailFocused && s.inputRowFocused,
+                      ]}
+                    >
+                      <Ionicons
+                        name="mail-outline"
+                        size={18}
+                        color={emailFocused ? BRAND : TEXT_MUTED}
+                      />
+                      <TextInput
+                        style={s.input}
+                        placeholder="your@email.com"
+                        placeholderTextColor={TEXT_MUTED}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        returnKeyType="next"
+                        value={email}
+                        onChangeText={(t) => { setEmail(t); setError(""); }}
+                        onFocus={() => setEmailFocused(true)}
+                        onBlur={() => setEmailFocused(false)}
+                        onSubmitEditing={() => passwordRef.current?.focus()}
+                        editable={!isSubmitting}
+                      />
+                    </View>
+                  </View>
 
-              {/* Password */}
-              <View style={s.fieldGroup}>
-                <Text style={s.label}>Password</Text>
-                <View
-                  style={[
-                    s.inputRow,
-                    passwordFocused && s.inputRowFocused,
-                  ]}
-                >
-                  <Ionicons
-                    name="lock-closed-outline"
-                    size={18}
-                    color={passwordFocused ? BRAND : TEXT_MUTED}
-                  />
-                  <TextInput
-                    ref={passwordRef}
-                    style={s.input}
-                    placeholder="Enter your password"
-                    placeholderTextColor={TEXT_MUTED}
-                    secureTextEntry={!showPassword}
-                    returnKeyType="done"
-                    value={password}
-                    onChangeText={(t) => { setPassword(t); setError(""); }}
-                    onFocus={() => {
-                      setPasswordFocused(true);
-                      // Scroll down so the password field stays visible above keyboard
-                      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
-                    }}
-                    onBlur={() => setPasswordFocused(false)}
-                    onSubmitEditing={handleSignIn}
-                    editable={!isSubmitting}
-                  />
+                  {/* Password */}
+                  <View style={s.fieldGroup}>
+                    <Text style={s.label}>Password</Text>
+                    <View
+                      style={[
+                        s.inputRow,
+                        passwordFocused && s.inputRowFocused,
+                      ]}
+                    >
+                      <Ionicons
+                        name="lock-closed-outline"
+                        size={18}
+                        color={passwordFocused ? BRAND : TEXT_MUTED}
+                      />
+                      <TextInput
+                        ref={passwordRef}
+                        style={s.input}
+                        placeholder="Enter your password"
+                        placeholderTextColor={TEXT_MUTED}
+                        secureTextEntry={!showPassword}
+                        returnKeyType="done"
+                        value={password}
+                        onChangeText={(t) => { setPassword(t); setError(""); }}
+                        onFocus={() => {
+                          setPasswordFocused(true);
+                          setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+                        }}
+                        onBlur={() => setPasswordFocused(false)}
+                        onSubmitEditing={handleSignIn}
+                        editable={!isSubmitting}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        activeOpacity={0.6}
+                      >
+                        <Ionicons
+                          name={showPassword ? "eye-off-outline" : "eye-outline"}
+                          size={20}
+                          color={passwordFocused ? BRAND : TEXT_MUTED}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Forgot Password */}
+                  <View style={s.forgotRow}>
+                    <Link href="/(auth)/forgot-password" asChild>
+                      <TouchableOpacity activeOpacity={0.6}>
+                        <Text style={s.forgotText}>Forgot password?</Text>
+                      </TouchableOpacity>
+                    </Link>
+                  </View>
+
+                  {/* Sign In Button */}
                   <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                    activeOpacity={0.6}
+                    onPress={handleSignIn}
+                    disabled={isSubmitting}
+                    activeOpacity={0.85}
+                    style={[
+                      s.primaryBtn,
+                      isSubmitting && s.primaryBtnDisabled,
+                    ]}
                   >
-                    <Ionicons
-                      name={showPassword ? "eye-off-outline" : "eye-outline"}
-                      size={20}
-                      color={passwordFocused ? BRAND : TEXT_MUTED}
-                    />
+                    {isSubmitting ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={s.primaryBtnText}>Sign In</Text>
+                    )}
                   </TouchableOpacity>
-                </View>
-              </View>
+                </>
+              ) : (
+                <>
+                  <View style={s.fieldGroup}>
+                    <Text style={s.label}>Verification Code</Text>
+                    <View style={s.inputRow}>
+                      <Ionicons name="shield-checkmark-outline" size={18} color={TEXT_MUTED} />
+                      <TextInput
+                        style={s.input}
+                        placeholder={mfaStrategy === "backup_code" ? "Enter backup code" : "123456"}
+                        placeholderTextColor={TEXT_MUTED}
+                        keyboardType="number-pad"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        returnKeyType="done"
+                        value={mfaCode}
+                        onChangeText={(t) => { setMfaCode(t); setError(""); }}
+                        editable={!isSubmitting}
+                        onSubmitEditing={handleSecondFactor}
+                      />
+                    </View>
+                  </View>
 
-              {/* Forgot Password */}
-              <View style={s.forgotRow}>
-                <Link href="/(auth)/forgot-password" asChild>
-                  <TouchableOpacity activeOpacity={0.6}>
-                    <Text style={s.forgotText}>Forgot password?</Text>
+                  <TouchableOpacity
+                    onPress={handleSecondFactor}
+                    disabled={isSubmitting}
+                    activeOpacity={0.85}
+                    style={[
+                      s.primaryBtn,
+                      isSubmitting && s.primaryBtnDisabled,
+                    ]}
+                  >
+                    {isSubmitting ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={s.primaryBtnText}>Verify and Sign In</Text>
+                    )}
                   </TouchableOpacity>
-                </Link>
-              </View>
 
-              {/* Sign In Button */}
-              <TouchableOpacity
-                onPress={handleSignIn}
-                disabled={isSubmitting}
-                activeOpacity={0.85}
-                style={[
-                  s.primaryBtn,
-                  isSubmitting && s.primaryBtnDisabled,
-                ]}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={s.primaryBtnText}>Sign In</Text>
-                )}
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setStage("credentials");
+                      setError("");
+                      setMfaCode("");
+                    }}
+                    activeOpacity={0.7}
+                    style={{ alignItems: "center", marginTop: 14 }}
+                  >
+                    <Text style={s.forgotText}>Back to password</Text>
+                  </TouchableOpacity>
+                </>
+              )}
 
               {/* Divider */}
               <View style={s.divider}>

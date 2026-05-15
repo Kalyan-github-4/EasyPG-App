@@ -305,7 +305,7 @@ export default function BookingRequestSheet({ visible, property, onClose, onCrea
               <View className="flex-row p-3 mb-6 bg-white border rounded-2xl border-slate-200">
                 <View className="w-[60px] h-[60px] rounded-xl overflow-hidden bg-slate-200 items-center justify-center mr-3">
                   {property?.photos?.[0]?.url ? (
-                    <Image source={{ uri: property.photos[0].url }} className="w-full h-full" />
+                    <Image source={{ uri: property.photos?.[0]?.url }} className="w-full h-full" />
                   ) : (
                     <House size={22} color="#94A3B8" weight="fill" />
                   )}
