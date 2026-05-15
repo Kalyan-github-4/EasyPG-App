@@ -1,10 +1,10 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   View, Text, Modal, TouchableOpacity, TextInput,
   ScrollView, KeyboardAvoidingView, Platform,
   ActivityIndicator, Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@clerk/clerk-expo";
 import { X, House, CalendarCheck, Check, CaretLeft, CaretRight } from "phosphor-react-native";
 import * as api from "@/src/services/api";
@@ -233,6 +233,8 @@ type Props = {
 
 export default function BookingRequestSheet({ visible, property, onClose, onCreated }: Props) {
   const { getToken } = useAuth();
+  const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
 
   const [visitDate, setVisitDate] = useState(() => {
     const d = new Date();
@@ -248,6 +250,11 @@ export default function BookingRequestSheet({ visible, property, onClose, onCrea
   // stable callbacks — no stale closure issues
   const handleDateChange = useCallback((d: Date) => setVisitDate(d), []);
   const handleTimeChange = useCallback((d: Date) => setVisitDate(d), []);
+  const handleNoteFocus = useCallback(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 120);
+  }, []);
 
   const handleSubmit = async () => {
     if (loading) return;
@@ -283,9 +290,14 @@ export default function BookingRequestSheet({ visible, property, onClose, onCrea
       <SafeAreaView className="flex-1 bg-slate-50">
         <KeyboardAvoidingView
           className="flex-1"
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
         >
-          <ScrollView contentContainerClassName="pb-10">
+          <ScrollView
+            ref={scrollRef}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 160 }}
+          >
             {/* HEADER */}
             <View className="flex-row items-center px-4 py-3.5 border-b border-slate-200 bg-white">
               <TouchableOpacity
@@ -343,6 +355,7 @@ export default function BookingRequestSheet({ visible, property, onClose, onCrea
                 <TextInput
                   value={note}
                   onChangeText={setNote}
+                  onFocus={handleNoteFocus}
                   multiline
                   maxLength={2000}
                   placeholder="Write something..."
