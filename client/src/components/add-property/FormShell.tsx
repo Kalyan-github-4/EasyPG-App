@@ -41,7 +41,7 @@ export default function FormShell({
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: "#F8F9FA" }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       {/* Header */}
       <View

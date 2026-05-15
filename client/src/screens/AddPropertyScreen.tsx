@@ -29,8 +29,8 @@ import {
 import * as api from "@/src/services/api";
 
 const STEP_TITLES = [
-  { title: "Basics", subtitle: "Name and location" },
-  { title: "Location", subtitle: "Drop the pin" },
+  { title: "Basics", subtitle: "Name, address, and pincode" },
+  { title: "Location", subtitle: "Search and fine-tune the pin" },
   { title: "Pricing", subtitle: "Monthly rent" },
   { title: "Amenities", subtitle: "What's included" },
   { title: "Photos", subtitle: "Show your property" },
@@ -57,6 +57,7 @@ function propertyToState(p: api.Property): Partial<FormState> {
     propertyType: p.propertyType,
     name: p.name,
     city: p.city,
+    pincode: p.pincode ?? "",
     location: p.location,
     latitude: p.latitude ?? null,
     longitude: p.longitude ?? null,
@@ -139,6 +140,7 @@ export default function AddPropertyScreen({ editId }: Props) {
     state.step,
     state.name,
     state.city,
+    state.pincode,
     state.location,
     state.latitude,
     state.longitude,
@@ -277,6 +279,7 @@ export default function AddPropertyScreen({ editId }: Props) {
         <LocationPicker
           city={state.city}
           location={state.location}
+          pincode={state.pincode}
           value={
             state.latitude !== null && state.longitude !== null
               ? { latitude: state.latitude, longitude: state.longitude }

@@ -24,10 +24,11 @@ export default function StepBasics({ state, dispatch }: Props) {
   return (
     <ScrollView
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+      keyboardDismissMode="on-drag"
+      contentContainerStyle={{ padding: 20, paddingBottom: 140 }}
     >
       <Text style={styles.h1}>What should we call your PG?</Text>
-      <Text style={styles.sub}>Give it a name guests will recognize.</Text>
+      <Text style={styles.sub}>Give it a name, city, and pincode guests will recognize.</Text>
 
       {/* Property Type */}
       <Label>Property Type</Label>
@@ -110,6 +111,23 @@ export default function StepBasics({ state, dispatch }: Props) {
         autoCapitalize="words"
       />
       <Hint>Type the city name exactly how you want guests to see it.</Hint>
+
+      <View style={{ height: 18 }} />
+
+      <Label>Pincode</Label>
+      <TextInput
+        value={state.pincode}
+        onChangeText={(v) =>
+          dispatch({ type: "SET_FIELD", field: "pincode", value: v.replace(/\D/g, "") })
+        }
+        placeholder="6-digit pincode"
+        placeholderTextColor="#94A3B8"
+        style={styles.input}
+        keyboardType="number-pad"
+        maxLength={6}
+        textContentType="postalCode"
+      />
+      <Hint>Used to tighten the location search in the next step.</Hint>
 
       <View style={{ height: 18 }} />
 

@@ -41,6 +41,7 @@ export default function StepReview({ state, dispatch }: Props) {
       <Section label="Basics" onEdit={() => dispatch({ type: "GOTO", step: 0 })}>
         <Row label="Name" value={state.name || "—"} />
         <Row label="City" value={state.city || "—"} />
+        <Row label="Pincode" value={state.pincode || "—"} />
         <Row label="Address" value={state.location || "—"} />
         <Row
           label="Coordinates"

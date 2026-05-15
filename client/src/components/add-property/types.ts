@@ -63,6 +63,7 @@ export type FormState = {
   propertyType: PropertyType;
   name: string;
   city: string;
+  pincode: string;
   location: string;
   latitude: number | null;
   longitude: number | null;
@@ -77,6 +78,7 @@ export const INITIAL_STATE: FormState = {
   propertyType: "pg",
   name: "",
   city: "",
+  pincode: "",
   location: "",
   latitude: null,
   longitude: null,
@@ -89,7 +91,7 @@ export const INITIAL_STATE: FormState = {
 // ─── Actions ─────────────────────────────────────────────
 
 export type Action =
-  | { type: "SET_FIELD"; field: "name" | "city" | "location" | "rent" | "description"; value: string }
+  | { type: "SET_FIELD"; field: "name" | "city" | "pincode" | "location" | "rent" | "description"; value: string }
   | { type: "SET_CITY"; value: string }
   | { type: "SET_COORDINATES"; latitude: number | null; longitude: number | null }
   | { type: "SET_PROPERTY_TYPE"; value: PropertyType }
@@ -202,6 +204,7 @@ export const facilityEnum = z.enum([
 const basicsSchema = z.object({
   name: z.string().trim().min(3, "Name must be at least 3 characters").max(120),
   city: z.string().trim().min(2, "Please pick a city").max(80),
+  pincode: z.string().trim().regex(/^\d{6}$/, "Enter a valid 6-digit pincode"),
   location: z.string().trim().min(5, "Please enter a full address").max(500),
 });
 
@@ -233,6 +236,7 @@ export function validateStep(step: StepIndex, state: FormState): string | null {
         basicsSchema.parse({
           name: state.name,
           city: state.city,
+          pincode: state.pincode,
           location: state.location,
         });
         return null;
@@ -279,6 +283,7 @@ export function buildPayload(state: FormState): PropertyInput {
     propertyType: state.propertyType,
     name: state.name.trim(),
     city: state.city.trim(),
+    pincode: state.pincode.trim(),
     location: state.location.trim(),
     latitude: state.latitude ?? undefined,
     longitude: state.longitude ?? undefined,

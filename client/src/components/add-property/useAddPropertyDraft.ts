@@ -17,6 +17,7 @@ export function useDraftPersistence(state: FormState, enabled: boolean) {
       // Only persist photos that finished uploading — skip in-flight uploads
       const snapshot = {
         name: state.name,
+        pincode: state.pincode,
         location: state.location,
         latitude: state.latitude,
         longitude: state.longitude,
@@ -66,6 +67,7 @@ export function hasAnyContent(draft: Partial<FormState> | null): boolean {
   if (!draft) return false;
   return !!(
     draft.name?.trim() ||
+    draft.pincode?.trim() ||
     draft.location?.trim() ||
     draft.latitude !== undefined && draft.latitude !== null ||
     draft.longitude !== undefined && draft.longitude !== null ||

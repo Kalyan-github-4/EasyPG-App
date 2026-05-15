@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text } from "react-native";
 import MapView, { Marker, type Region } from "react-native-maps";
 
@@ -25,7 +25,7 @@ function getCityCenter(city: string): Coordinates {
 }
 
 export default function LocationPicker({ city, location, value, onChange }: Props) {
-  const fallback = getCityCenter(city);
+  const fallback = useMemo(() => getCityCenter(city), [city]);
   const selected = value ?? fallback;
   const [region, setRegion] = useState<Region>({
     ...selected,
@@ -40,7 +40,7 @@ export default function LocationPicker({ city, location, value, onChange }: Prop
       latitudeDelta: 0.012,
       longitudeDelta: 0.012,
     });
-  }, [city, fallback, value]);
+  }, [fallback, value]);
 
   return (
     <View style={{ gap: 12 }}>

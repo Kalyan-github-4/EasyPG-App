@@ -118,6 +118,48 @@ export async function resolveLocation(
   return result;
 }
 
+/** Reverse-geocode coordinates to a human-readable address. */
+export async function reverseGeocodeLocation(
+  lat: number,
+  lng: number
+): Promise<ResolvedLocation | null> {
+  const key = `reverse:${lat.toFixed(6)},${lng.toFixed(6)}`;
+  if (cache.has(key)) return cache.get(key) ?? null;
+
+  const params = new URLSearchParams({
+    format: "json",
+    lat: String(lat),
+    lon: String(lng),
+    addressdetails: "1",
+  });
+
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/reverse?${params.toString()}`,
+    {
+      headers: {
+        "User-Agent": "EasyPG-App/1.0",
+      },
+    }
+  );
+
+  const data: NominatimReverseResult = await res.json();
+
+  if (!data?.lat || !data?.lon) {
+    cache.set(key, null);
+    return null;
+  }
+
+  const result: ResolvedLocation = {
+    lat: parseFloat(data.lat),
+    lng: parseFloat(data.lon),
+    kind: "place",
+    displayName: data.display_name,
+  };
+
+  cache.set(key, result);
+  return result;
+}
+
 // ─── Nominatim response shape (minimal) ───────────────────
 
 interface NominatimResult {
@@ -126,4 +168,10 @@ interface NominatimResult {
   display_name: string;
   class: string;
   type: string;
+}
+
+interface NominatimReverseResult {
+  lat: string;
+  lon: string;
+  display_name: string;
 }
