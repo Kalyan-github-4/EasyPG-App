@@ -75,7 +75,7 @@ export default function SignInScreen() {
           );
         }
       } else {
-        setError(`Sign in failed (status: ${result.status}). Please contact support.`);
+       setError(`Sign in failed. Please try again or use "Forgot Password".`);
       }
     } catch (err: any) {
       const message =
