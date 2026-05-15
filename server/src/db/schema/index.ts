@@ -64,6 +64,7 @@ export const properties = pgTable("properties", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   city: varchar("city", { length: 80 }).notNull(),
+  pincode: varchar("pincode", { length: 10 }),
   location: varchar("location", { length: 500 }).notNull(),
   latitude: doublePrecision("latitude"),
   longitude: doublePrecision("longitude"),

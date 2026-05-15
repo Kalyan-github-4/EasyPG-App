@@ -36,6 +36,7 @@ const createPropertySchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().optional(),
   city: z.string().trim().min(2).max(80),
+  pincode: z.string().trim().regex(/^\d{6}$/, "Invalid pincode"),
   location: z.string().min(1).max(500),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
@@ -316,6 +317,7 @@ router.post("/", syncUser, requireRole("host"), async (req, res) => {
         name: input.name,
         description: input.description,
         city: input.city.trim(),
+        pincode: input.pincode.trim(),
         location: input.location,
         latitude: input.latitude,
         longitude: input.longitude,
@@ -392,6 +394,7 @@ router.put("/:id", syncUser, requireRole("host"), async (req, res) => {
     if (input.name !== undefined) scalarUpdates.name = input.name;
     if (input.description !== undefined) scalarUpdates.description = input.description;
     if (input.city !== undefined) scalarUpdates.city = input.city.trim();
+    if (input.pincode !== undefined) scalarUpdates.pincode = input.pincode.trim();
     if (input.location !== undefined) scalarUpdates.location = input.location;
     if (input.latitude !== undefined) scalarUpdates.latitude = input.latitude;
     if (input.longitude !== undefined) scalarUpdates.longitude = input.longitude;
