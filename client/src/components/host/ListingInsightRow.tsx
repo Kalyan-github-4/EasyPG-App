@@ -30,9 +30,9 @@ export default function ListingInsightRow({
         borderColor: hasIssues ? "#FEE2E2" : "#F1F5F9",
       }}
     >
-      {property.photos.length > 0 ? (
+      {property.photos?.length > 0 ? (
         <Image
-          source={{ uri: property.photos[0].url }}
+          source={{ uri: property.photos?.[0]?.url }}
           style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: "#E2E8F0" }}
         />
       ) : (
