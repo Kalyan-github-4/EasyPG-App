@@ -11,28 +11,13 @@ export default function SectionHeader({
   onAction?: () => void;
 }) {
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 20,
-        marginBottom: 14,
-      }}
-    >
-      <Text
-        style={{
-          fontSize: 18,
-          fontWeight: "800",
-          color: "#0F172A",
-          letterSpacing: -0.4,
-        }}
-      >
+    <View className="flex-row items-center justify-between px-5 mb-3.5">
+      <Text className="text-lg font-extrabold text-slate-900 tracking-[-0.4px]">
         {title}
       </Text>
       {actionLabel && onAction ? (
         <TouchableOpacity onPress={onAction} hitSlop={8}>
-          <Text style={{ fontSize: 13, color: "#2563EB", fontWeight: "700" }}>
+          <Text className="text-[13px] text-blue-600 font-bold">
             {actionLabel}
           </Text>
         </TouchableOpacity>

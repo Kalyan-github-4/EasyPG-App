@@ -18,54 +18,25 @@ export default function QuickAction({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.85}
-      style={{
-        alignItems: "center",
-        width: 80,
-        gap: 8,
-      }}
+      className="items-center w-20 gap-2"
     >
       <View
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 18,
-          backgroundColor: bg,
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-        }}
+        className="relative items-center justify-center w-14 h-14 rounded-xl"
+        style={{ backgroundColor: bg }}
       >
         {icon}
         {badge ? (
           <View
-            style={{
-              position: "absolute",
-              top: -4,
-              right: -4,
-              minWidth: 18,
-              height: 18,
-              paddingHorizontal: 5,
-              borderRadius: 9,
-              backgroundColor: "#EF4444",
-              borderWidth: 2,
-              borderColor: "#F8FAFC",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.25 rounded-full bg-red-500 border-2 border-slate-100 items-center justify-center"
           >
-            <Text style={{ fontSize: 10, fontWeight: "800", color: "#fff" }}>
+            <Text className="text-[10px] font-extrabold text-white">
               {badge > 9 ? "9+" : badge}
             </Text>
           </View>
         ) : null}
       </View>
       <Text
-        style={{
-          fontSize: 11,
-          fontWeight: "700",
-          color: "#334155",
-          textAlign: "center",
-        }}
+        className="text-[11px] font-bold text-slate-700 text-center"
         numberOfLines={1}
       >
         {label}

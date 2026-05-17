@@ -13,48 +13,17 @@ export default function StatCard({
   bg: string;
 }) {
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: "#fff",
-        borderRadius: 18,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: "#F1F5F9",
-      }}
-    >
+    <View className="flex-1 p-4 bg-white border rounded-xl border-slate-100">
       <View
-        style={{
-          width: 38,
-          height: 38,
-          borderRadius: 12,
-          backgroundColor: bg,
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 12,
-        }}
+        className="w-9.5 h-9.5 rounded-xl items-center justify-center mb-3"
+        style={{ backgroundColor: bg }}
       >
         {icon}
       </View>
-      <Text
-        style={{
-          fontSize: 22,
-          fontWeight: "800",
-          color: "#0F172A",
-          letterSpacing: -0.5,
-        }}
-      >
+      <Text className="text-[22px] font-extrabold text-slate-900 tracking-[-0.5px]">
         {value}
       </Text>
-      <Text
-        style={{
-          fontSize: 11,
-          color: "#64748B",
-          fontWeight: "600",
-          marginTop: 2,
-          letterSpacing: 0.2,
-        }}
-      >
+      <Text className="text-[11px] text-slate-600 font-semibold mt-0.5 tracking-[0.2px]">
         {label}
       </Text>
     </View>
