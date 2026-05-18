@@ -1,38 +1,107 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { Heart, Compass } from "phosphor-react-native";
+import { Heart, MagnifyingGlass } from "phosphor-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 
 export default function EmptyState() {
   return (
-    <View className="flex-1 items-center justify-center px-10">
-      {/* Icon circle */}
-      <View className="w-26 h-26 rounded-full bg-red-50 items-center justify-center mb-5.5">
-        <View className="w-16 h-16 rounded-full bg-red-200 items-center justify-center">
-          <Heart size={30} color="#EF4444" weight="regular" />
+    <View
+      style={{
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 40,
+        paddingTop: 48,
+        paddingBottom: 24,
+      }}
+    >
+      {/* Animated icon ring */}
+      <View
+        style={{
+          width: 100,
+          height: 100,
+          borderRadius: 50,
+          backgroundColor: "#EFF6FF",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 24,
+        }}
+      >
+        <View
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            backgroundColor: "#DBEAFE",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Heart size={28} color="#3B82F6" weight="duotone" />
         </View>
       </View>
 
       {/* Title */}
-      <Text className="text-xl font-extrabold text-slate-900 text-center">
+      <Text
+        style={{
+          fontSize: 20,
+          fontWeight: "800",
+          color: "#0F172A",
+          textAlign: "center",
+          letterSpacing: -0.3,
+        }}
+      >
         No saved PGs yet
       </Text>
 
       {/* Subtitle */}
-      <Text className="text-sm text-slate-400 mt-2 text-center leading-5.25 max-w-[260px]">
-        Tap the heart on any PG to save it. Compare your favorites here later.
+      <Text
+        style={{
+          fontSize: 14,
+          color: "#94A3B8",
+          textAlign: "center",
+          marginTop: 8,
+          lineHeight: 21,
+          maxWidth: 260,
+          fontWeight: "500",
+        }}
+      >
+        Tap the heart on any listing to save it here.{"\n"}Compare your favorites
+        anytime.
       </Text>
 
       {/* CTA Button */}
       <TouchableOpacity
         onPress={() => router.navigate("/(app)/(tabs)")}
         activeOpacity={0.85}
-        className="mt-6.5 flex-row items-center gap-2 bg-slate-900 rounded-xl px-6.5 py-3.5"
+        style={{ marginTop: 28 }}
       >
-        <Compass size={17} color="#fff" weight="regular" />
-        <Text className="text-sm font-bold text-white tracking-[0.2px]">
-          Explore PGs
-        </Text>
+        <LinearGradient
+          colors={["#2563EB", "#3B82F6"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            borderRadius: 14,
+            paddingHorizontal: 24,
+            paddingVertical: 14,
+          }}
+        >
+          <MagnifyingGlass size={16} color="#fff" weight="bold" />
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "700",
+              color: "#fff",
+              letterSpacing: 0.2,
+            }}
+          >
+            Explore PGs
+          </Text>
+        </LinearGradient>
       </TouchableOpacity>
     </View>
   );
