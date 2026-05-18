@@ -23,6 +23,13 @@ export const propertyGenderEnum = pgEnum("property_gender", [
   "any",
 ]);
 
+export const occupancyTypeEnum = pgEnum("occupancy_type", [
+  "single",
+  "double",
+  "triple",
+  "shared",
+]);
+
 export const facilityTypeEnum = pgEnum("facility_type", [
   "wifi",
   "ac",
@@ -70,6 +77,7 @@ export const properties = pgTable("properties", {
   longitude: doublePrecision("longitude"),
   rent: integer("rent").notNull(),
   gender: propertyGenderEnum("gender").notNull().default("any"),
+  occupancyType: occupancyTypeEnum("occupancy_type").notNull().default("single"),
   isAvailable: boolean("is_available").default(true).notNull(),
   isTrusted: boolean("is_trusted").default(false).notNull(),
   rating: numeric("rating", { precision: 2, scale: 1 }).default("0.0").notNull(),

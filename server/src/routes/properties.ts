@@ -10,6 +10,7 @@ import {
   facilityTypeEnum,
   propertyTypeEnum,
   propertyGenderEnum,
+  occupancyTypeEnum,
   users,
 } from "../db/schema/index.js";
 import { syncUser, requireRole } from "../middleware/auth.js";
@@ -24,6 +25,7 @@ const MAX_PAGE_LIMIT = 50;
 const facilityEnum = z.enum(facilityTypeEnum.enumValues);
 const propertyType = z.enum(propertyTypeEnum.enumValues);
 const propertyGender = z.enum(propertyGenderEnum.enumValues);
+const occupancyType = z.enum(occupancyTypeEnum.enumValues);
 
 const photoSchema = z.object({
   url: z.url(),
@@ -42,6 +44,7 @@ const createPropertySchema = z.object({
   longitude: z.number().optional(),
   rent: z.number().int().positive(),
   gender: propertyGender.optional().default("any"),
+  occupancyType: occupancyType.optional().default("single"),
   isAvailable: z.boolean().optional(),
   facilities: z.array(facilityEnum).default([]),
   photos: z.array(photoSchema).default([]),
@@ -323,6 +326,7 @@ router.post("/", syncUser, requireRole("host"), async (req, res) => {
         longitude: input.longitude,
         rent: input.rent,
         gender: input.gender,
+        occupancyType: input.occupancyType,
         isAvailable: input.isAvailable ?? true,
       })
       .returning();
@@ -400,6 +404,7 @@ router.put("/:id", syncUser, requireRole("host"), async (req, res) => {
     if (input.longitude !== undefined) scalarUpdates.longitude = input.longitude;
     if (input.rent !== undefined) scalarUpdates.rent = input.rent;
     if (input.gender !== undefined) scalarUpdates.gender = input.gender;
+    if (input.occupancyType !== undefined) scalarUpdates.occupancyType = input.occupancyType;
     if (input.isAvailable !== undefined) scalarUpdates.isAvailable = input.isAvailable;
 
     // Run scalar update, photo replace, and facility replace in parallel where possible

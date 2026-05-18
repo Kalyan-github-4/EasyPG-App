@@ -4,6 +4,19 @@ import { Ionicons } from "@expo/vector-icons";
 import type { FormState, Action } from "./types";
 import { FACILITY_META } from "./types";
 
+const GENDER_LABELS: Record<string, string> = {
+  boys: "Boys Only",
+  girls: "Girls Only",
+  any: "Co-ed (Any)",
+};
+
+const OCCUPANCY_LABELS: Record<string, string> = {
+  single: "Single Occupancy",
+  double: "Double Sharing",
+  triple: "Triple Sharing",
+  shared: "Shared / Dorm",
+};
+
 type Props = {
   state: FormState;
   dispatch: React.Dispatch<Action>;
@@ -64,8 +77,10 @@ export default function StepReview({ state, dispatch }: Props) {
         />
       </Section>
 
-      <Section label="Pricing" onEdit={() => dispatch({ type: "GOTO", step: 2 })}>
+      <Section label="Room & Pricing" onEdit={() => dispatch({ type: "GOTO", step: 2 })}>
         <Row label="Rent" value={rent ? `₹${rent} / month` : "—"} />
+        <Row label="Preferred For" value={GENDER_LABELS[state.gender] || state.gender} />
+        <Row label="Room Type" value={OCCUPANCY_LABELS[state.occupancyType] || state.occupancyType} />
       </Section>
 
       <Section label="Amenities" onEdit={() => dispatch({ type: "GOTO", step: 3 })}>

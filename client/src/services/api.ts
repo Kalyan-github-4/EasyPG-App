@@ -202,6 +202,8 @@ export type PropertyType = "pg" | "mess" | "hostel";
 
 export type PropertyGender = "boys" | "girls" | "any";
 
+export type OccupancyType = "single" | "double" | "triple" | "shared";
+
 export interface PropertyHost {
   id: string;
   name: string;
@@ -222,6 +224,7 @@ export interface Property {
   longitude: number | null;
   rent: number;
   gender: PropertyGender;
+  occupancyType: OccupancyType;
   isAvailable: boolean;
   isTrusted: boolean;
   rating: number;
@@ -244,6 +247,7 @@ export interface PropertyInput {
   longitude?: number;
   rent: number;
   gender?: PropertyGender;
+  occupancyType?: OccupancyType;
   isAvailable?: boolean;
   facilities?: FacilityType[];
   photos?: { url: string; publicId: string; displayOrder?: number }[];

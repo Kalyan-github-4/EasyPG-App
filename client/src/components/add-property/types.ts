@@ -12,7 +12,7 @@ import {
   Drop,
   Bed,
 } from "phosphor-react-native";
-import type { FacilityType, PropertyInput, PropertyType } from "@/src/services/api";
+import type { FacilityType, PropertyInput, PropertyType, PropertyGender, OccupancyType } from "@/src/services/api";
 
 // ─── Facility Metadata ──────────────────────────────────
 
@@ -50,7 +50,7 @@ export type PhotoState = {
 export const STEPS = [
   "Basics",
   "Location",
-  "Pricing",
+  "Room & Pricing",
   "Amenities",
   "Photos",
   "About",
@@ -68,6 +68,8 @@ export type FormState = {
   latitude: number | null;
   longitude: number | null;
   rent: string;
+  gender: PropertyGender;
+  occupancyType: OccupancyType;
   facilities: FacilityType[];
   photos: PhotoState[];
   description: string;
@@ -83,6 +85,8 @@ export const INITIAL_STATE: FormState = {
   latitude: null,
   longitude: null,
   rent: "",
+  gender: "any",
+  occupancyType: "single",
   facilities: [],
   photos: [],
   description: "",
@@ -95,6 +99,8 @@ export type Action =
   | { type: "SET_CITY"; value: string }
   | { type: "SET_COORDINATES"; latitude: number | null; longitude: number | null }
   | { type: "SET_PROPERTY_TYPE"; value: PropertyType }
+  | { type: "SET_GENDER"; value: PropertyGender }
+  | { type: "SET_OCCUPANCY_TYPE"; value: OccupancyType }
   | { type: "TOGGLE_FACILITY"; value: FacilityType }
   | { type: "ADD_PHOTO"; photo: PhotoState }
   | { type: "UPDATE_PHOTO"; localId: string; patch: Partial<PhotoState> }
@@ -128,6 +134,12 @@ export function reducer(state: FormState, action: Action): FormState {
 
     case "SET_PROPERTY_TYPE":
       return { ...state, propertyType: action.value };
+
+    case "SET_GENDER":
+      return { ...state, gender: action.value };
+
+    case "SET_OCCUPANCY_TYPE":
+      return { ...state, occupancyType: action.value };
 
     case "TOGGLE_FACILITY": {
       const has = state.facilities.includes(action.value);
@@ -288,6 +300,8 @@ export function buildPayload(state: FormState): PropertyInput {
     latitude: state.latitude ?? undefined,
     longitude: state.longitude ?? undefined,
     rent: Number(state.rent),
+    gender: state.gender,
+    occupancyType: state.occupancyType,
     description: state.description.trim() || undefined,
     facilities: state.facilities,
     photos: state.photos
