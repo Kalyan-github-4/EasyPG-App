@@ -30,6 +30,8 @@ export default function ExploreMap({
   onSelect,
   onUseMyLocation,
 }: Props) {
+  const hasUserLocation = Boolean(userLocation);
+
   const html = useMemo(() => {
     const markers = properties
       .filter((property) => typeof property.latitude === "number" && typeof property.longitude === "number")
@@ -163,7 +165,11 @@ export default function ExploreMap({
             className="flex-row items-center gap-1.5 rounded-full border px-3 py-2"
             style={{ backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }}
           >
-            <Ionicons name="locate" size={14} color="#2563EB" />
+            <Ionicons
+              name={hasUserLocation ? "locate" : "locate-outline"}
+              size={14}
+              color="#2563EB"
+            />
             <Text className="text-xs font-extrabold text-blue-600">Use my location</Text>
           </TouchableOpacity>
         ) : null}

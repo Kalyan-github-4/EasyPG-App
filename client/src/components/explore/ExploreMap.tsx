@@ -31,6 +31,7 @@ export default function ExploreMap({
   onUseMyLocation,
 }: Props) {
   const webViewRef = useRef<WebView>(null);
+  const hasUserLocation = Boolean(userLocation);
 
   // ── Pan map to center ──────────────────────────────────────────
   useEffect(() => {
@@ -89,7 +90,7 @@ export default function ExploreMap({
       })();
       true;
     `);
-  }, [userLocation?.latitude, userLocation?.longitude]);
+  }, [userLocation]);
 
   // ── Highlight selected property + pan to it ───────────────────
   useEffect(() => {
@@ -348,7 +349,11 @@ export default function ExploreMap({
             className="flex-row items-center gap-1.5 rounded-full border px-3 py-2"
             style={{ backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }}
           >
-            <Ionicons name="locate" size={14} color="#2563EB" />
+            <Ionicons
+              name={hasUserLocation ? "locate" : "locate-outline"}
+              size={14}
+              color="#2563EB"
+            />
             <Text className="text-xs font-extrabold text-blue-600">
               Use my location
             </Text>

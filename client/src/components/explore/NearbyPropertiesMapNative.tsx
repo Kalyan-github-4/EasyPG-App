@@ -33,6 +33,8 @@ export default function NearbyPropertiesMap({
   onSelect,
   onUseMyLocation,
 }: Props) {
+  const hasUserLocation = Boolean(userLocation);
+
   const region: Region = {
     ...center,
     latitudeDelta: 0.035,
@@ -64,7 +66,11 @@ export default function NearbyPropertiesMap({
               borderRadius: 999,
             }}
           >
-            <Ionicons name="locate" size={14} color="#2563EB" />
+            <Ionicons
+              name={hasUserLocation ? "locate" : "locate-outline"}
+              size={14}
+              color="#2563EB"
+            />
             <Text style={{ fontSize: 12, fontWeight: "800", color: "#2563EB" }}>
               Use my location
             </Text>
